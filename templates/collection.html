@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% set active = 'library' %}
+{% block title %}{{ collection.name }} — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/collections" class="back-link"><span class="back-arrow">←</span> Collections</a>
+  <h1 class="page-title" style="border-left: 4px solid {{ collection.color }}; padding-left: 12px">{{ collection.name }}</h1>
+  {% if collection.description %}
+  <p class="page-subtitle">{{ collection.description }}</p>
+  {% endif %}
+  <p class="page-subtitle">{{ items|length }} items</p>
+</div>
+
+<div class="card-grid">
+  {% for item in items %}
+  <a href="/item/{{ item.id }}" class="card stagger" style="--i: {{ loop.index0 }}">
+    <div class="card-title">{{ item.title or 'Untitled' }}</div>
+    <div class="card-meta">
+      <span>{{ item.domain }}</span>
+      <span>{{ item.added_at|timeago }}</span>
+      {% if item.learning_value == 'high' %}<span class="badge-high">high value</span>{% endif %}
+    </div>
+    {% if item.summary %}
+    <div class="card-summary">{{ item.summary[:120] }}{% if item.summary|length > 120 %}…{% endif %}</div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+{% if not items %}
+<div class="empty-state">
+  <p>This collection is empty. Add bookmarks from item detail pages.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% set active = 'discover' %}
+{% set tab = 'experts' %}
+{% block title %}people — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Discover</h1>
+  <p class="page-subtitle">People you're learning from</p>
+</div>
+
+{% include '_discover_tabs.html' %}
+
+<div class="card-grid">
+  {% for e in experts %}
+  <a href="/expert/{{ e.id }}" class="card expert-card stagger" style="--i: {{ loop.index0 }}">
+    <div class="card-title">{{ e.name }}</div>
+    {% if e.expertise %}
+    <div class="expert-tags">
+      {% for tag in e.expertise | parse_json %}
+      <span class="tag-inline">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="card-meta">{{ e.item_count }} item{{ 's' if e.item_count != 1 else '' }}{% if e.followed %} · following{% endif %}</div>
+  </a>
+  {% endfor %}
+</div>
+
+{% if not experts %}
+<div class="empty-state">
+  <p>curiosity identifies authors as it reads. Follow the ones you want to track.</p>
+</div>
+{% endif %}
+{% endblock %}

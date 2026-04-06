@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% set active = 'spaces' %}
+{% block title %}Topics — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Topics</h1>
+  <p class="page-subtitle">{{ topics|length }} topics across your knowledge base</p>
+</div>
+
+<div class="card-grid card-grid-sm">
+  {% for t in topics %}
+  <div class="topic-card">
+    <div class="topic-card-name"><a href="/topic/{{ t.name }}">{{ t.name }}</a></div>
+    <div class="topic-card-count">{{ t.bookmark_count }} items{% if t.category %} · {{ t.category }}{% endif %}</div>
+    {% if t.preview_titles %}
+    <ul class="topic-card-previews">
+      {% for title in t.preview_titles.split('|||')[:3] %}
+      {% if title %}
+      <li>{{ title }}</li>
+      {% endif %}
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% if not topics %}
+<div class="empty-state">
+  <p>No topics yet. Topics are created when AI enriches bookmarks.</p>
+</div>
+{% endif %}
+{% endblock %}

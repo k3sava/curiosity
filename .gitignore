@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.db
+*.db-shm
+*.db-wal
+.venv/
+dist/
+*.egg-info/
+data/screenshots/
+data/pdfs/
+data/videos/
+data/images/
+.DS_Store

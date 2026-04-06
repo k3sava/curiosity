@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% set active = 'home' %}
+{% block title %}Projects — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Artemis Projects</h1>
+  <p class="page-subtitle">{{ projects|length }} projects</p>
+</div>
+
+<div class="card-grid card-grid-lg">
+  {% for p in projects %}
+  <div class="project-card">
+    <div class="project-title">{{ p.title }}</div>
+    <div class="project-phase">
+      {% if p.client %}<span>{{ p.client }}</span> · {% endif %}
+      Phase {{ p.current_phase or '?' }}
+      <span class="project-status project-status-{{ p.status }}">{{ p.status }}</span>
+    </div>
+    {% if p.goal %}
+    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5">{{ p.goal[:120] }}</div>
+    {% endif %}
+    <div style="font-size:11px;color:var(--text-light);margin-top:8px">Updated: {{ p.updated or p.created }}</div>
+
+    {% set tasks = project_tasks.get(p.id, []) %}
+    {% if tasks %}
+    <ul class="task-list mt-8">
+      {% for t in tasks[:5] %}
+      <li class="task-item">
+        <span class="task-status">
+          {% if t.status == 'done' %}✓{% elif t.status == 'in_progress' %}→{% else %}○{% endif %}
+        </span>
+        <span>{{ t.description[:60] }}</span>
+      </li>
+      {% endfor %}
+      {% if tasks|length > 5 %}
+      <li class="task-item" style="color:var(--text-light)">+{{ tasks|length - 5 }} more</li>
+      {% endif %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% if not projects %}
+<div class="empty-state">
+  <p>No projects found in artemis.db.</p>
+</div>
+{% endif %}
+{% endblock %}

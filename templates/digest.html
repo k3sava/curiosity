@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% set active = 'review' %}
+{% set tab = 'week' %}
+{% block title %}this week — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Review</h1>
+  <p class="page-subtitle">What you've been learning, week by week</p>
+</div>
+
+{% include '_review_tabs.html' %}
+
+{% for w in weeks %}
+<div class="digest-week">
+  <div class="digest-week-header">
+    <span>{% if w.week and w.week|length > 6 %}Week of {{ w.week }}{% else %}{{ w.week }}{% endif %}</span>
+    <span class="digest-count">{{ w.count }} items</span>
+  </div>
+  {% for item in week_items.get(w.week, []) %}
+  <a href="/item/{{ item.id }}" class="digest-item">
+    {% if item.learning_value == 'high' %}<span class="value-dot value-dot-high" title="high value"></span>{% endif %}
+    <span class="digest-title">{{ item.title or 'Untitled' }}</span>
+    <span class="digest-domain">{{ item.domain }}</span>
+    <span class="digest-time">{{ item.added_at|timeago }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endfor %}
+
+{% if not weeks %}
+<div class="empty-state">
+  <p>No digest data yet. Keep saving. curiosity learns what you like.</p>
+</div>
+{% endif %}
+{% endblock %}

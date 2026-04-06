@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set active = 'spaces' %}
+{% block title %}{{ topic.name }} — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">{{ topic.name }}</h1>
+  <p class="page-subtitle">{{ topic.bookmark_count }} items{% if topic.category %} · {{ topic.category }}{% endif %}</p>
+</div>
+
+{% if connected %}
+<div class="mb-16 flex gap-8 flex-wrap">
+  <span style="font-size:12px;color:var(--text-muted);padding-top:3px">Related:</span>
+  {% for c in connected %}
+  <a href="/topic/{{ c.name }}" class="tag">{{ c.name }} <span style="opacity:0.5">{{ c.shared }}</span></a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if experts %}
+<div class="mb-24 flex gap-8 flex-wrap">
+  <span style="font-size:12px;color:var(--text-muted);padding-top:3px">Experts:</span>
+  {% for e in experts %}
+  <a href="/expert/{{ e.id }}" class="tag">{{ e.name }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card-grid">
+  {% for item in items %}
+  <div class="card">
+    <div class="card-title"><a href="/item/{{ item.id }}">{{ item.title or 'Untitled' }}</a></div>
+    <div class="card-meta">
+      <span>{{ item.domain }}</span>
+      {% if item.learning_value %}
+      <span class="badge badge-{{ item.learning_value }}">{{ item.learning_value }}</span>
+      {% endif %}
+    </div>
+    {% if item.summary %}
+    <div class="card-summary">{{ item.summary }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% if not items %}
+<div class="empty-state">
+  <p>No items in this topic yet.</p>
+</div>
+{% endif %}
+{% endblock %}

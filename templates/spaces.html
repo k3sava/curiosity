@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% set active = 'spaces' %}
+{% set tab = 'spaces' %}
+{% block title %}Spaces — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Spaces</h1>
+  <p class="page-subtitle">Your knowledge, organized</p>
+</div>
+
+{% include '_spaces_tabs.html' %}
+
+<div class="card-grid card-grid-spaces">
+  {% for s in spaces %}
+  <a href="/space/{{ s.name | urlencode }}" class="card space-card stagger" style="--space-color: {{ s.color }}; --i: {{ loop.index0 }}">
+    <div class="space-card-header">
+      <span class="space-icon">{{ s.icon }}</span>
+      <span class="space-name">{{ s.name }}</span>
+    </div>
+    <div class="space-count">{{ s.count }} items</div>
+    {% if s.previews %}
+    <ul class="space-previews">
+      {% for title in s.previews %}
+      <li>{{ title[:55] }}{% if title|length > 55 %}...{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+{% if not spaces %}
+<div class="empty-state">
+  <p>No spaces yet. Enrich some bookmarks to populate spaces.</p>
+</div>
+{% endif %}
+{% endblock %}

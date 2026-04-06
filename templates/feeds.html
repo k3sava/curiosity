@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% set active = 'discover' %}
+{% set tab = 'feeds' %}
+{% block title %}sources — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Discover</h1>
+  <p class="page-subtitle">Sources you follow</p>
+</div>
+
+{% include '_discover_tabs.html' %}
+
+<div class="feed-add-form" style="margin-bottom: 32px; display: flex; gap: 8px;">
+  <input type="url" id="feed-url" class="search-bar" placeholder="Paste an RSS or Atom feed URL..." style="flex: 1; max-width: 500px;">
+  <button id="add-feed-btn" class="action-btn">Add feed</button>
+</div>
+
+<div class="card-grid">
+  {% for f in feeds %}
+  <div class="card stagger" style="--i: {{ loop.index0 }}" data-feed-id="{{ f.id }}">
+    <div class="card-title">{{ f.title or f.url }}</div>
+    <div class="card-meta">
+      <span>{{ f.item_count }} item{{ 's' if f.item_count != 1 else '' }}</span>
+      {% if f.last_fetched %}
+      <span>fetched {{ f.last_fetched|timeago }}</span>
+      {% else %}
+      <span>never fetched</span>
+      {% endif %}
+      {% if f.active %}<span class="value-dot value-dot-high" title="active"></span>{% endif %}
+    </div>
+    <div class="card-summary" style="font-size: 12px; color: var(--ink-4); word-break: break-all;">{{ f.url }}</div>
+    <div style="display: flex; gap: 8px; margin-top: 12px;">
+      <button class="action-btn fetch-btn" data-feed-id="{{ f.id }}">Fetch now</button>
+      <button class="action-btn delete-btn" data-feed-id="{{ f.id }}" style="color: var(--signal);">Remove</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if not feeds %}
+<div class="empty-state">
+  <p>Paste an RSS or Atom feed URL to follow a source.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('add-feed-btn').addEventListener('click', async () => {
+  const input = document.getElementById('feed-url');
+  const url = input.value.trim();
+  if (!url) return;
+  const btn = document.getElementById('add-feed-btn');
+  btn.textContent = 'Adding...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/feeds', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      location.reload();
+    } else {
+      alert(data.error || 'Failed to add feed');
+    }
+  } finally {
+    btn.textContent = 'Add feed';
+    btn.disabled = false;
+  }
+});
+
+document.querySelectorAll('.fetch-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    const feedId = this.dataset.feedId;
+    this.textContent = 'Fetching...';
+    this.disabled = true;
+    try {
+      const resp = await fetch('/api/feeds/' + feedId + '/fetch', {method: 'POST'});
+      const data = await resp.json();
+      if (resp.ok) {
+        this.textContent = data.new_items + ' new';
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        this.textContent = 'Error';
+      }
+    } catch {
+      this.textContent = 'Error';
+    }
+  });
+});
+
+document.querySelectorAll('.delete-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    if (!confirm('Remove this feed?')) return;
+    const feedId = this.dataset.feedId;
+    await fetch('/api/feeds/' + feedId, {method: 'DELETE'});
+    this.closest('.card').remove();
+  });
+});
+
+document.getElementById('feed-url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('add-feed-btn').click();
+});
+</script>
+{% endblock %}

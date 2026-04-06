@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Curiosity — Bookmark Intelligence",
+  "version": "0.1.0",
+  "description": "Sends bookmark events to Curiosity MCP server for auto-ingestion and learning.",
+  "permissions": ["bookmarks"],
+  "host_permissions": ["http://127.0.0.1:7277/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    },
+    "default_title": "Curiosity"
+  }
+}

@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% set active = 'library' %}
+{% set tab = 'all' %}
+{% block title %}library — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Library</h1>
+  <p class="page-subtitle">{{ bookmarks|length }} items</p>
+</div>
+
+{% include '_library_tabs.html' %}
+
+<div class="filter-bar">
+  <label>Sort:</label>
+  <select onchange="location.href='/library?sort='+this.value+'{% if current_space %}&space={{ current_space|urlencode }}{% endif %}{% if current_domain %}&domain={{ current_domain|urlencode }}{% endif %}{% if current_read_status %}&read_status={{ current_read_status }}{% endif %}'">
+    <option value="date" {% if current_sort == 'date' %}selected{% endif %}>Recent</option>
+    <option value="value" {% if current_sort == 'value' %}selected{% endif %}>Learning value</option>
+    <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Title</option>
+  </select>
+
+  {% if current_domain %}
+  <span class="filter-active">{{ current_domain }} <a href="/library?sort={{ current_sort }}{% if current_space %}&space={{ current_space|urlencode }}{% endif %}{% if current_read_status %}&read_status={{ current_read_status }}{% endif %}">x</a></span>
+  {% else %}
+  <label>Domain:</label>
+  <select onchange="if(this.value) location.href='/library?domain='+encodeURIComponent(this.value)+'&sort={{ current_sort }}{% if current_space %}&space={{ current_space|urlencode }}{% endif %}{% if current_read_status %}&read_status={{ current_read_status }}{% endif %}'">
+    <option value="">All domains</option>
+    {% for d in domains %}
+    <option value="{{ d.domain }}">{{ d.domain }} ({{ d.cnt }})</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+
+  <label>Status:</label>
+  <select onchange="location.href='/library?sort={{ current_sort }}{% if current_space %}&space={{ current_space|urlencode }}{% endif %}{% if current_domain %}&domain={{ current_domain|urlencode }}{% endif %}'+(this.value ? '&read_status='+this.value : '')">
+    <option value="">All</option>
+    <option value="unread" {% if current_read_status == 'unread' %}selected{% endif %}>Unread</option>
+    <option value="reading" {% if current_read_status == 'reading' %}selected{% endif %}>Reading</option>
+    <option value="read" {% if current_read_status == 'read' %}selected{% endif %}>Read</option>
+  </select>
+
+  <div class="view-toggle">
+    <button class="view-btn view-btn-cards active" id="view-cards" title="Card view">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    </button>
+    <button class="view-btn view-btn-list" id="view-list" title="List view">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    </button>
+  </div>
+
+  <button class="btn-secondary" id="bulk-toggle" style="font-size: 12px; height: 30px; padding: 0 10px;">Select</button>
+
+  <label class="upload-label btn-secondary" style="cursor:pointer; margin-left: auto;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Upload PDF
+    <input type="file" accept=".pdf" id="pdf-upload" style="display:none">
+  </label>
+  <label class="upload-label btn-secondary" style="cursor:pointer;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    Upload image
+    <input type="file" accept=".png,.jpg,.jpeg,.webp,.tiff,.bmp" id="image-upload" style="display:none">
+  </label>
+
+  <div class="filter-chips">
+    {% if current_space %}
+    <a href="/library?sort={{ current_sort }}{% if current_domain %}&domain={{ current_domain|urlencode }}{% endif %}{% if current_read_status %}&read_status={{ current_read_status }}{% endif %}" class="space-pill active" style="--space-color: {{ SPACES[current_space].color if current_space in SPACES else '#666' }}">
+      <span class="space-dot"></span>{{ current_space }} x
+    </a>
+    {% endif %}
+    {% for sname, sdata in SPACES.items() %}
+    {% if sname != current_space %}
+    <a href="/library?space={{ sname|urlencode }}&sort={{ current_sort }}{% if current_domain %}&domain={{ current_domain|urlencode }}{% endif %}{% if current_read_status %}&read_status={{ current_read_status }}{% endif %}" class="space-pill" style="--space-color: {{ sdata.color }}">
+      <span class="space-dot"></span>{{ sname }}
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<div class="library-view library-cards" id="library-container">
+  {% for b in bookmarks %}
+  {# Card view item #}
+  <div class="card-wrapper library-card-item stagger" style="--i: {{ loop.index0 }}" data-id="{{ b.id }}">
+    <input type="checkbox" class="bulk-checkbox" data-id="{{ b.id }}" onclick="event.stopPropagation(); updateBulkCount();">
+    {% if b.read_status == 'reading' %}
+    <span class="read-dot read-dot-reading" title="Reading"></span>
+    {% elif b.read_status == 'read' %}
+    <span class="read-dot read-dot-read" title="Read"></span>
+    {% endif %}
+    <a href="/item/{{ b.id }}" class="card">
+      <div class="card-title">{{ b.title or 'Untitled' }}</div>
+      <div class="card-meta">
+        <span>{{ b.domain }}</span>
+        <span>{{ b.added_at|timeago }}</span>
+        {% if b.learning_value == 'high' %}<span class="value-dot value-dot-high" title="high value"></span>
+        {% elif b.learning_value == 'medium' %}<span class="value-dot value-dot-medium" title="medium value"></span>{% endif %}
+        {% if b.link_status and b.link_status != 'ok' %}<span class="tag-inline" style="background: var(--signal-wash); color: var(--signal); font-size: 10px;">{{ b.link_status }}</span>{% endif %}
+      </div>
+      {% if b.summary %}
+      <div class="card-summary card-summary-tight">{{ b.summary[:120] }}{% if b.summary|length > 120 %}...{% endif %}</div>
+      {% endif %}
+    </a>
+  </div>
+  {# List view item #}
+  <div class="list-item-wrapper library-list-item stagger" style="--i: {{ loop.index0 }}" data-id="{{ b.id }}">
+    <input type="checkbox" class="bulk-checkbox bulk-checkbox-list" data-id="{{ b.id }}" onclick="event.stopPropagation(); updateBulkCount();">
+    {% if b.read_status == 'reading' %}
+    <span class="read-dot-inline read-dot-reading" title="Reading"></span>
+    {% elif b.read_status == 'read' %}
+    <span class="read-dot-inline read-dot-read" title="Read"></span>
+    {% endif %}
+    <a href="/item/{{ b.id }}" class="list-item">
+      <span class="list-title">{{ b.title or 'Untitled' }}</span>
+      <span class="list-meta">{{ b.domain }}</span>
+      <span class="list-meta">{{ b.added_at|timeago }}</span>
+      {% if b.learning_value == 'high' %}<span class="value-dot value-dot-high" title="high value"></span>{% endif %}
+      {% if b.summary %}<span class="list-summary">{{ b.summary[:80] }}{% if b.summary|length > 80 %}...{% endif %}</span>{% endif %}
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+{% if not bookmarks %}
+<div class="empty-state">
+  <p>No items match your filters.</p>
+</div>
+{% endif %}
+
+<!-- Bulk action bar -->
+<div class="bulk-bar" id="bulk-bar">
+  <span id="bulk-count">0 selected</span>
+  <button class="btn-secondary" onclick="bulkAddToCollection()" style="height: 30px; font-size: 12px;">Add to collection</button>
+  <button class="btn-secondary" onclick="bulkReEnrich()" style="height: 30px; font-size: 12px;">Re-enrich</button>
+  <button class="btn-secondary" onclick="bulkDelete()" style="height: 30px; font-size: 12px; color: var(--err);">Delete</button>
+  <button class="btn-secondary" onclick="toggleBulkMode()" style="height: 30px; font-size: 12px;">Cancel</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/library.js"></script>
+<script>
+var bulkMode = false;
+
+function toggleBulkMode() {
+  bulkMode = !bulkMode;
+  var container = document.getElementById('library-container');
+  var bar = document.getElementById('bulk-bar');
+  var btn = document.getElementById('bulk-toggle');
+  if (bulkMode) {
+    container.classList.add('bulk-mode');
+    bar.classList.add('bulk-bar-visible');
+    btn.textContent = 'Cancel';
+    btn.style.borderColor = 'var(--signal)';
+    btn.style.color = 'var(--signal)';
+  } else {
+    container.classList.remove('bulk-mode');
+    bar.classList.remove('bulk-bar-visible');
+    btn.textContent = 'Select';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    document.querySelectorAll('.bulk-checkbox').forEach(function(cb) { cb.checked = false; });
+    updateBulkCount();
+  }
+}
+
+function getSelectedIds() {
+  var mode = localStorage.getItem('curiosity-library-view') || 'cards';
+  var selector = mode === 'list' ? '.library-list-item .bulk-checkbox:checked' : '.library-card-item .bulk-checkbox:checked';
+  return Array.from(document.querySelectorAll(selector)).map(function(cb) { return cb.dataset.id; });
+}
+
+function updateBulkCount() {
+  var ids = getSelectedIds();
+  document.getElementById('bulk-count').textContent = ids.length + ' selected';
+}
+
+async function bulkAddToCollection() {
+  var ids = getSelectedIds();
+  if (!ids.length) return;
+  var name = prompt('Collection name:');
+  if (!name) return;
+  var resp = await fetch('/api/bulk/add-to-collection', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({bookmark_ids: ids, collection_name: name})
+  });
+  if (resp.ok) {
+    var data = await resp.json();
+    showBulkToast('Added ' + data.count + ' items to "' + name + '"');
+    toggleBulkMode();
+  }
+}
+
+async function bulkReEnrich() {
+  var ids = getSelectedIds();
+  if (!ids.length) return;
+  var resp = await fetch('/api/bulk/re-enrich', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({bookmark_ids: ids})
+  });
+  if (resp.ok) {
+    var data = await resp.json();
+    showBulkToast('Queued ' + data.count + ' items for re-enrichment');
+    toggleBulkMode();
+  }
+}
+
+async function bulkDelete() {
+  var ids = getSelectedIds();
+  if (!ids.length) return;
+  if (!confirm('Delete ' + ids.length + ' items? This cannot be undone.')) return;
+  var resp = await fetch('/api/bulk/delete', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({bookmark_ids: ids})
+  });
+  if (resp.ok) {
+    ids.forEach(function(id) {
+      document.querySelectorAll('[data-id="'+id+'"]').forEach(function(el) { el.remove(); });
+    });
+    showBulkToast('Deleted ' + ids.length + ' items');
+    toggleBulkMode();
+  }
+}
+
+function showBulkToast(msg) {
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 3000);
+}
+
+document.getElementById('bulk-toggle').addEventListener('click', toggleBulkMode);
+</script>
+{% endblock %}

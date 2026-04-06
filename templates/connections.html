@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% set active = 'spaces' %}
+{% set tab = 'connections' %}
+{% block title %}Connections — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Spaces</h1>
+  <p class="page-subtitle">Where ideas link across domains</p>
+</div>
+
+{% include '_spaces_tabs.html' %}
+
+{% for c in connections %}
+<div class="connection-row">
+  <div>
+    <a href="/item/{{ c.bookmark_a }}">{{ c.title_a or 'Untitled' }}</a>
+    <div style="font-size:11px;color:var(--text-light)">{{ c.domain_a }}</div>
+  </div>
+  <div class="connection-arrow">
+    {% if c.connection_type %}{{ c.connection_type }}{% else %}↔{% endif %}
+  </div>
+  <div>
+    <a href="/item/{{ c.bookmark_b }}">{{ c.title_b or 'Untitled' }}</a>
+    <div style="font-size:11px;color:var(--text-light)">{{ c.domain_b }}</div>
+  </div>
+  {% if c.explanation %}
+  <div class="connection-explanation">{{ c.explanation }}</div>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if not connections %}
+<div class="empty-state">
+  <p>No connections yet. AI discovers connections between items during enrichment sessions.</p>
+</div>
+{% endif %}
+{% endblock %}

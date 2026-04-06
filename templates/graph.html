@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% set active = 'spaces' %}
+{% set tab = 'graph' %}
+{% block title %}Graph — curiosity{% endblock %}
+
+{% block head %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom:12px">
+  <h1 class="page-title">Spaces</h1>
+  <p class="page-subtitle">How your spaces connect</p>
+</div>
+
+{% include '_spaces_tabs.html' %}
+
+<div class="graph-container">
+  <div id="graph-canvas" style="width:100%;height:100%"></div>
+  <div id="graph-tooltip" class="graph-tooltip"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/graph.js"></script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set active = 'library' %}
+{% set tab = 'queue' %}
+{% block title %}Reading Queue — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Library</h1>
+  <p class="page-subtitle">{{ items|length }} high-value items{% if not show_all %} (unread only){% endif %}</p>
+</div>
+
+{% include '_library_tabs.html' %}
+
+<div class="filter-bar">
+  {% if show_all %}
+  <a href="/queue" class="btn-secondary" style="font-size: 12px; height: 30px; padding: 0 10px; text-decoration: none;">Show unread only</a>
+  {% else %}
+  <a href="/queue?show_all=1" class="btn-secondary" style="font-size: 12px; height: 30px; padding: 0 10px; text-decoration: none;">Show all</a>
+  {% endif %}
+</div>
+
+<div class="card-grid card-grid-lg">
+  {% for item in items %}
+  <a href="/item/{{ item.id }}" class="card stagger" style="--i: {{ loop.index0 }}">
+    <div class="card-title">{{ item.title or 'Untitled' }}</div>
+    <div class="card-meta">
+      <span>{{ item.domain }}</span>
+      <span>{{ item.added_at|timeago }}</span>
+      <span class="badge-high">high value</span>
+      {% if item.word_count %}
+      <span>{{ (item.word_count / 200) | int }} min</span>
+      {% endif %}
+      {% if item.read_status == 'reading' %}
+      <span class="read-dot-inline read-dot-reading" title="Reading" style="margin-left: 4px;"></span>
+      {% elif item.read_status == 'read' %}
+      <span class="read-dot-inline read-dot-read" title="Read" style="margin-left: 4px;"></span>
+      {% endif %}
+    </div>
+    {% if item.summary %}
+    <div class="card-summary">{{ item.summary[:150] }}{% if item.summary|length > 150 %}...{% endif %}</div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+{% if not items %}
+<div class="empty-state">
+  <p>As curiosity enriches your bookmarks, the best ones show up here.{% if not show_all %} <a href="/queue?show_all=1" style="color: var(--accent);">Show all</a>{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}

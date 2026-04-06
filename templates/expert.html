@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% set active = 'discover' %}
+{% block title %}{{ expert.name }} — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/experts" class="back-link"><span class="back-arrow">←</span> Experts</a>
+  <h1 class="page-title">
+    {{ expert.name }}
+    <button class="follow-btn{% if expert.followed %} following{% endif %}" id="follow-btn" data-expert-id="{{ expert.id }}">
+      {% if expert.followed %}Following{% else %}Follow{% endif %}
+    </button>
+  </h1>
+  {% if expert.credentials %}
+  <p class="page-subtitle">{{ expert.credentials }}</p>
+  {% endif %}
+</div>
+
+{% if expert.perspective %}
+<div class="item-summary">
+  {{ expert.perspective }}
+</div>
+{% endif %}
+
+{% if expert.expertise %}
+<div class="expert-tags-block">
+  {% for tag in expert.expertise | parse_json %}
+  <span class="tag-inline">{{ tag }}</span>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if expert.home_url %}
+<p class="expert-url"><a href="{{ expert.home_url }}" target="_blank" rel="noopener">{{ expert.home_url }}</a></p>
+{% endif %}
+
+<section class="expert-articles">
+  <h2 class="section-label">articles ({{ items|length }})</h2>
+  <div class="card-grid">
+    {% for item in items %}
+    <a href="/item/{{ item.id }}" class="card stagger" style="--i: {{ loop.index0 }}">
+      <div class="card-title">{{ item.title or 'Untitled' }}</div>
+      <div class="card-meta">
+        <span>{{ item.domain }}</span>
+        <span>{{ item.added_at|timeago }}</span>
+        {% if item.learning_value == 'high' %}<span class="badge-high">high value</span>{% endif %}
+      </div>
+      {% if item.summary %}
+      <div class="card-summary">{{ item.summary[:120] }}{% if item.summary|length > 120 %}…{% endif %}</div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('follow-btn')?.addEventListener('click', async function() {
+  const btn = this;
+  const id = btn.dataset.expertId;
+  const resp = await fetch('/api/follow-expert/' + id, { method: 'POST' });
+  const data = await resp.json();
+  btn.textContent = data.followed ? 'Following' : 'Follow';
+  btn.classList.toggle('following', data.followed);
+});
+</script>
+{% endblock %}

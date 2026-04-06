@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% set active = 'review' %}
+{% set tab = 'today' %}
+{% block title %}review — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Review</h1>
+  <p class="page-subtitle">Take a minute. See what stuck.</p>
+</div>
+
+{% include '_review_tabs.html' %}
+
+{% if items %}
+<div class="review-single" id="review-container">
+  <div class="review-intro">
+    <p>{{ items|length }} insight{{ 's' if items|length != 1 else '' }} from your past.</p>
+  </div>
+
+  {% for item in items %}
+  <div class="review-slide{% if loop.index0 == 0 %} active{% endif %}" data-index="{{ loop.index0 }}">
+    {% if item.insights %}
+    <div class="review-quote">"{{ item.insights[0] }}"</div>
+    {% elif item.summary %}
+    <div class="review-quote">"{{ item.summary[:200] }}{% if item.summary|length > 200 %}...{% endif %}"</div>
+    {% endif %}
+    <div class="review-source">
+      from <a href="/item/{{ item.id }}">{{ item.title[:60] }}{% if item.title|length > 60 %}...{% endif %}</a><br>
+      {{ item.domain }} · saved {{ item.added_at|timeago }}
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="review-nav">
+    <button class="review-nav-btn" id="review-prev" disabled>← Prev</button>
+    <span id="review-counter">1 of {{ items|length }}</span>
+    <button class="review-nav-btn" id="review-next">Next →</button>
+  </div>
+</div>
+
+<div style="text-align: center; margin-top: 32px">
+  <a href="/review" class="follow-btn" style="font-size: 14px; padding: 10px 24px">shuffle new cards</a>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>Not enough enriched bookmarks for review yet. Keep saving. curiosity learns what you like.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var slides = document.querySelectorAll('.review-slide');
+  var counter = document.getElementById('review-counter');
+  var prevBtn = document.getElementById('review-prev');
+  var nextBtn = document.getElementById('review-next');
+  if (!slides.length) return;
+
+  var current = 0;
+  var total = slides.length;
+
+  function show(idx) {
+    slides.forEach(function(s) { s.classList.remove('active'); });
+    slides[idx].classList.add('active');
+    counter.textContent = (idx + 1) + ' of ' + total;
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === total - 1;
+  }
+
+  prevBtn.addEventListener('click', function() {
+    if (current > 0) { current--; show(current); }
+  });
+
+  nextBtn.addEventListener('click', function() {
+    if (current < total - 1) { current++; show(current); }
+  });
+
+  // Keyboard navigation
+  document.addEventListener('keydown', function(e) {
+    if (e.target.matches('input, textarea, select')) return;
+    if (e.key === 'ArrowLeft' && current > 0) { current--; show(current); }
+    if (e.key === 'ArrowRight' && current < total - 1) { current++; show(current); }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% set active = 'home' %}
+{% block title %}Ask — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Ask your knowledge base</h1>
+  <p class="page-subtitle">Search across everything you've saved</p>
+</div>
+
+<div class="chat-container">
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-msg chat-msg-system">
+      <div class="chat-bubble chat-bubble-system">
+        Ask a question and I'll search your knowledge base for relevant items. This uses full-text search across all your bookmarks, notes, and insights.
+      </div>
+    </div>
+  </div>
+
+  <form class="chat-input-bar" id="chat-form">
+    <input type="text" class="chat-input" id="chat-input" placeholder="What do you know about..." autocomplete="off" autofocus>
+    <button type="submit" class="btn-primary chat-send">Ask</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/chat.js"></script>
+{% endblock %}

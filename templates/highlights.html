@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% set active = 'library' %}
+{% set tab = 'highlights' %}
+{% block title %}Highlights — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Library</h1>
+  <p class="page-subtitle">{{ total }} highlights across {{ groups|length }} items</p>
+</div>
+
+{% include '_library_tabs.html' %}
+
+<div class="highlights-page">
+  {% for group in groups %}
+  <div class="highlights-group">
+    <div class="highlights-group-header">
+      <a href="/item/{{ group.bookmark_id }}" class="highlights-group-title">{{ group.title }}</a>
+      <span class="highlights-group-domain">{{ group.domain }}</span>
+    </div>
+    {% for h in group.highlights %}
+    <div class="highlight-item" data-id="{{ h.id }}">
+      <div class="highlight-text">"{{ h.text }}"</div>
+      {% if h.note %}
+      <div class="highlight-note">{{ h.note }}</div>
+      {% endif %}
+      <div class="highlight-meta">
+        <span>{{ h.created_at|timeago }}</span>
+        <button class="highlight-delete" onclick="deleteHighlight('{{ h.id }}', this)">Remove</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+{% if not groups %}
+<div class="empty-state">
+  <p>Select text on any bookmark to save it here.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function deleteHighlight(id, btn) {
+  var resp = await fetch('/api/highlights/' + id, {method: 'DELETE'});
+  if (resp.ok) {
+    var el = btn.closest('.highlight-item');
+    if (el) el.remove();
+  }
+}
+</script>
+{% endblock %}

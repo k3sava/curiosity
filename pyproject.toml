@@ -1,0 +1,43 @@
+[project]
+name = "artemis-curiosity"
+version = "0.1.0"
+description = "Artemis learning management system — MCP server for autonomous knowledge discovery"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Kesava", email = "k3sava@gmail.com" },
+]
+
+dependencies = [
+    "mcp>=1.0",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+ui = [
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "feedparser>=6.0",
+    "PyPDF2>=3.0",
+]
+watch = ["watchdog>=4.0"]
+cloud = ["supabase>=2.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+all = ["artemis-curiosity[ui,watch]"]
+
+[project.scripts]
+curiosity = "curiosity.cli:main"
+curiosity-mcp = "curiosity.server:main"
+curiosity-import = "curiosity.import_chrome:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

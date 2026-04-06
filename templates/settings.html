@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% set active = '' %}
+{% block title %}Settings — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Settings</h1>
+  <p class="page-subtitle">Cookie jar, preferences</p>
+</div>
+
+<div class="settings-section">
+  <h2 class="settings-section-title">Cookie jar</h2>
+  <p class="settings-section-desc">Store cookies for authenticated crawling. Paste cookies from browser devtools (JSON array of {name, value, domain, path}).</p>
+
+  <form id="cookie-form" class="cookie-form">
+    <div style="display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap;">
+      <input type="text" id="cookie-domain" placeholder="domain (e.g. notion.so)" class="settings-input" style="width: 200px;">
+      <textarea id="cookie-json" placeholder='[{"name": "token", "value": "abc123", "domain": ".notion.so", "path": "/"}]' class="settings-textarea" rows="3" style="flex: 1; min-width: 300px;"></textarea>
+      <button type="submit" class="action-btn">Save cookies</button>
+    </div>
+  </form>
+
+  {% if cookie_domains %}
+  <div class="cookie-list" style="margin-top: 16px;">
+    {% for c in cookie_domains %}
+    <div class="cookie-row" data-id="{{ c.id }}">
+      <span class="cookie-domain-label">{{ c.domain }}</span>
+      <span class="cookie-date">{{ c.created_at|timeago }}</span>
+      <button class="cookie-delete" onclick="deleteCookie('{{ c.id }}', this)">Remove</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color: var(--ink-4); font-size: 13px; margin-top: 12px;">No cookies saved yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('cookie-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var domain = document.getElementById('cookie-domain').value.trim();
+  var json = document.getElementById('cookie-json').value.trim();
+  if (!domain || !json) return;
+  try {
+    var cookies = JSON.parse(json);
+    var resp = await fetch('/api/set-cookies', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domain: domain, cookies: cookies})
+    });
+    if (resp.ok) { location.reload(); }
+    else { alert('Failed to save cookies'); }
+  } catch(e) {
+    alert('Invalid JSON: ' + e.message);
+  }
+});
+
+async function deleteCookie(id, btn) {
+  var resp = await fetch('/api/cookies/' + id, {method: 'DELETE'});
+  if (resp.ok) {
+    btn.closest('.cookie-row').remove();
+  }
+}
+</script>
+{% endblock %}

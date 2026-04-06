@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% set active = 'home' %}
+{% block title %}curiosity{% endblock %}
+
+{% block content %}
+
+{% if not stats or stats.total == 0 %}
+<div class="onboarding">
+  <h1 class="onboarding-title">your knowledge starts here.</h1>
+  <p class="onboarding-desc">Save a link. curiosity reads it, pulls out the key ideas, finds<br>connections to things you've saved before, and tells you what's missing.</p>
+  <div class="onboarding-actions">
+    <form class="onboarding-url-form" id="onboarding-url-form">
+      <input type="url" class="onboarding-url-input" id="onboarding-url" placeholder="paste a URL to get started" autocomplete="off">
+      <button type="submit" class="btn-primary">Save</button>
+    </form>
+    <div class="onboarding-or">or</div>
+    <div class="onboarding-links">
+      <a href="/import" class="btn-secondary">import your bookmarks</a>
+      <label class="btn-secondary" style="cursor: pointer;">
+        upload a file
+        <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" id="onboarding-upload" style="display:none">
+      </label>
+    </div>
+  </div>
+</div>
+
+{% elif stats.total < 10 %}
+<div class="briefing">
+  <p class="briefing-text">You've saved <strong>{{ stats.total }}</strong> item{{ 's' if stats.total != 1 else '' }}. A few more and curiosity starts connecting ideas, finding gaps, and surfacing things you'd otherwise forget.</p>
+</div>
+
+{% if fresh %}
+<section class="home-section">
+  <div class="fresh-list">
+    {% for f in fresh %}
+    <a href="/item/{{ f.id }}" class="fresh-item stagger" style="--i: {{ loop.index0 }}">
+      <span class="fresh-title">{{ f.title or 'Untitled' }}</span>
+      <span class="fresh-meta">{{ f.domain }} · {{ f.added_at|timeago }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% else %}
+{# The daily briefing #}
+<div class="briefing stagger" style="--i: 0">
+  <p class="briefing-text">You've saved <strong>{{ stats.total }}</strong> items and enriched <strong>{{ stats.enriched_pct }}%</strong> of them.{% if stats.this_week > 0 %} <strong>{{ stats.this_week }}</strong> new this week.{% endif %}{% if stats.high_value > 0 %} <strong>{{ stats.high_value }}</strong> marked high value.{% endif %}</p>
+</div>
+
+{% if picked %}
+<section class="home-section">
+  <h2 class="section-label-warm">worth reading</h2>
+  <p class="section-hint">High-value items you haven't seen yet.</p>
+  <div class="picked-grid">
+    {% for b in picked %}
+    <a href="/item/{{ b.id }}" class="card card-picked stagger" style="--i: {{ loop.index0 + 1 }}">
+      <div class="card-title">{{ b.title or 'Untitled' }}</div>
+      <div class="card-meta">
+        <span>{{ b.domain }}</span>
+        <span>{{ b.added_at|timeago }}</span>
+        {% if b.learning_value == 'high' %}<span class="value-dot value-dot-high"></span>{% endif %}
+      </div>
+      {% if b.summary %}
+      <div class="card-summary">{{ b.summary[:200] }}{% if b.summary|length > 200 %}...{% endif %}</div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if fresh %}
+<section class="home-section">
+  <h2 class="section-label-warm">recently saved</h2>
+  <div class="fresh-list">
+    {% for f in fresh %}
+    <a href="/item/{{ f.id }}" class="fresh-item stagger" style="--i: {{ loop.index0 + 4 }}">
+      <span class="fresh-title">{{ f.title or 'Untitled' }}</span>
+      <span class="fresh-meta">{{ f.domain }} · {{ f.added_at|timeago }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<div class="home-footer stagger" style="--i: 10">
+  {% if spaces %}
+  <div class="home-footer-col">
+    <h3 class="section-label-warm">your spaces</h3>
+    {% for s in spaces[:6] %}
+    <a href="/space/{{ s.name | urlencode }}" class="footer-link">{{ s.icon }} {{ s.name }} <span class="footer-count">{{ s.count }}</span></a>
+    {% endfor %}
+    {% if spaces|length > 6 %}<a href="/spaces" class="footer-link" style="color: var(--accent)">all spaces →</a>{% endif %}
+  </div>
+  {% endif %}
+  {% if top_domains %}
+  <div class="home-footer-col">
+    <h3 class="section-label-warm">where you read</h3>
+    {% for d in top_domains %}
+    <a href="/library?domain={{ d.domain|urlencode }}" class="footer-link">{{ d.domain }} <span class="footer-count">{{ d.cnt }}</span></a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var form = document.getElementById('onboarding-url-form');
+  if (form) {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var input = document.getElementById('onboarding-url');
+      var url = input.value.trim();
+      if (!url) return;
+      try {
+        var resp = await fetch('/api/ingest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: url })
+        });
+        var data = await resp.json();
+        if (data.status === 'exists') {
+          input.value = '';
+          input.placeholder = 'already saved. try another...';
+        } else {
+          location.reload();
+        }
+      } catch(err) {
+        input.placeholder = 'something went wrong. try again.';
+      }
+    });
+  }
+
+  var upload = document.getElementById('onboarding-upload');
+  if (upload) {
+    upload.addEventListener('change', async function() {
+      var file = this.files[0];
+      if (!file) return;
+      var formData = new FormData();
+      formData.append('file', file);
+      var endpoint = file.name.toLowerCase().endsWith('.pdf') ? '/api/upload' : '/api/upload-image';
+      try {
+        var resp = await fetch(endpoint, { method: 'POST', body: formData });
+        if (resp.ok) location.reload();
+      } catch(err) {}
+    });
+  }
+})();
+</script>
+{% endblock %}

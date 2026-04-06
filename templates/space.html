@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% set active = 'spaces' %}
+{% block title %}{{ space.name }} — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/spaces" class="back-link"><span class="back-arrow">←</span> Spaces</a>
+  <h1 class="page-title"><span class="space-icon-lg" style="color: {{ space.color }}">{{ space.icon }}</span> {{ space.name }}</h1>
+  <p class="page-subtitle">{{ items|length }} items{% if experts %} · {{ experts|length }} experts{% endif %}</p>
+</div>
+
+{% if related %}
+<div class="related-spaces">
+  <span class="related-label">Related:</span>
+  {% for rname, rcount in related %}
+  <a href="/space/{{ rname | urlencode }}" class="space-pill" style="--space-color: {{ SPACES[rname].color if rname in SPACES else '#666' }}">
+    <span class="space-dot"></span>{{ rname }}
+    <span class="related-count">{{ rcount }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card-grid">
+  {% for b in items %}
+  <a href="/item/{{ b.id }}" class="card stagger{% if b.id in viewed_ids %} card-viewed{% endif %}" style="--i: {{ loop.index0 }}">
+    <div class="card-title">{{ b.title or 'Untitled' }}</div>
+    <div class="card-meta">
+      <span>{{ b.domain }}</span>
+      <span>{{ b.added_at|timeago }}</span>
+      {% if b.learning_value == 'high' %}<span class="badge-high">high value</span>{% endif %}
+      {% if b.id in viewed_ids %}<span class="viewed-dot" title="Viewed">●</span>{% endif %}
+    </div>
+    {% if b.summary %}
+    <div class="card-summary">{{ b.summary[:120] }}{% if b.summary|length > 120 %}…{% endif %}</div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+{% if experts %}
+<section class="space-experts">
+  <h2 class="section-label">experts in this space</h2>
+  {% for e in experts %}
+  <a href="/expert/{{ e.id }}" class="expert-inline">
+    <span class="expert-name">{{ e.name }}</span>
+    {% if e.expertise %}<span class="expert-field">{{ e.expertise }}</span>{% endif %}
+  </a>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if not items %}
+<div class="empty-state">
+  <p>No items in this space yet.</p>
+</div>
+{% endif %}
+{% endblock %}

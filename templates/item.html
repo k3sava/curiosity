@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title or 'Note' }} — curiosity{% endblock %}
+
+{% block content %}
+<div class="item-page">
+  <a href="javascript:history.back()" class="back-link"><span class="back-arrow">←</span> Back</a>
+
+  {% if item_type == 'bookmark' %}
+  <h1 class="item-title">{{ item.title or 'Untitled' }}</h1>
+  <div class="item-meta">
+    <span>{{ item.domain }}</span>
+    <span>{{ item.added_at|timeago }}</span>
+    {% if item.word_count %}
+    <span>{{ (item.word_count / 200) | int }} min read</span>
+    {% endif %}
+    {% if item.learning_value == 'high' %}<span class="value-dot value-dot-high" title="high value"></span>
+    {% elif item.learning_value == 'medium' %}<span class="value-dot value-dot-medium" title="medium value"></span>{% endif %}
+  </div>
+
+  <div class="item-actions-row">
+    {% if item.url %}
+    <a href="{{ item.url }}" target="_blank" rel="noopener" class="item-original">Open original →</a>
+    {% endif %}
+    {% if not summary %}
+    <button class="btn-primary" id="enrich-btn" data-bookmark-id="{{ item.id }}" style="font-size: 12px; height: 32px;">Enrich with AI</button>
+    {% endif %}
+    {% if item.content_type %}
+    <span class="tag-inline">{{ item.content_type }}</span>
+    {% endif %}
+    {% if item.link_status and item.link_status != 'ok' %}
+    <span class="tag-inline" style="background: var(--signal-wash); color: var(--signal);">{{ item.link_status }}</span>
+    {% endif %}
+
+    {# Overflow menu for secondary actions #}
+    <div class="overflow-menu" style="margin-left: auto;">
+      <button class="overflow-trigger" id="overflow-btn">···</button>
+      <div class="overflow-dropdown" id="overflow-dropdown">
+        {# Read status #}
+        <div style="padding: 6px 14px; font-size: 11px; color: var(--ink-4); font-weight: 500;">Status</div>
+        <div class="read-status-bar-inline" data-bookmark-id="{{ item.id }}">
+          <button class="overflow-item read-status-inline{% if read_status == 'unread' %} active{% endif %}" data-status="unread">Unread</button>
+          <button class="overflow-item read-status-inline{% if read_status == 'reading' %} active{% endif %}" data-status="reading">Reading</button>
+          <button class="overflow-item read-status-inline{% if read_status == 'read' %} active{% endif %}" data-status="read">Read</button>
+        </div>
+        <div style="height: 1px; background: var(--line-soft); margin: 4px 0;"></div>
+        {% if has_cache %}
+        <a href="/archive/{{ item.id }}" target="_blank" class="overflow-item">View cached copy</a>
+        {% endif %}
+        <button class="overflow-item" id="archive-btn" data-bookmark-id="{{ item.id }}">Archive to Wayback</button>
+        <button class="overflow-item" id="add-to-collection-btn" data-bookmark-id="{{ item.id }}">Add to collection</button>
+        {% if not item.screenshot_path %}
+        <button class="overflow-item" id="screenshot-btn" data-id="{{ item.id }}">Capture screenshot</button>
+        {% else %}
+        <a href="/screenshot/{{ item.id }}" target="_blank" class="overflow-item">View screenshot</a>
+        {% endif %}
+        {% if not item.pdf_path %}
+        <button class="overflow-item" id="pdf-btn" data-id="{{ item.id }}">Generate PDF</button>
+        {% else %}
+        <a href="/pdf/{{ item.id }}" target="_blank" class="overflow-item">View PDF</a>
+        {% endif %}
+        {% if not item.js_rendered and (not summary or summary|length < 100) %}
+        <button class="overflow-item" id="render-btn" data-id="{{ item.id }}">Render with browser</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Inline image for uploads #}
+  {% if item.url and item.url.startswith('file://') %}
+  <div style="margin-bottom: 20px;">
+    <img src="/image/{{ item.url.replace('file://', '') }}" alt="{{ item.title }}" style="max-width: 100%; border-radius: var(--r-card); border: 1px solid var(--line);">
+  </div>
+  {% endif %}
+
+  {% if is_youtube is defined and is_youtube %}
+  <div style="margin-bottom: 20px; padding: 12px 16px; background: var(--surface-sunken); border-radius: var(--r-card); border: 1px solid var(--line-soft);">
+    {% if video_ready %}
+    <div style="font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 8px;">Audio</div>
+    <audio controls style="width: 100%;" src="/api/video/{{ item.id }}">Your browser does not support audio playback.</audio>
+    {% elif has_ytdlp %}
+    <button class="action-btn" id="download-audio-btn" data-bookmark-id="{{ item.id }}" style="font-size: 12px;">Download audio</button>
+    <span id="download-status" style="font-size: 12px; color: var(--ink-3); margin-left: 8px;"></span>
+    {% else %}
+    <span style="font-size: 12px; color: var(--ink-4);">Install yt-dlp to download audio: brew install yt-dlp</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if summary %}
+  <div class="item-summary" id="item-summary">
+    {{ summary }}
+  </div>
+  {% endif %}
+
+  {% if insights %}
+  <div class="item-takeaways">
+    <h2 class="item-section-label-warm">key insights</h2>
+    <ul>
+      {% for insight in insights %}
+      <li>{{ insight }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {# Highlights #}
+  {% if highlights %}
+  <div class="highlights-section">
+    <h2 class="item-section-label-warm">highlights</h2>
+    <div id="highlights-list">
+      {% for h in highlights %}
+      <div class="highlight-item" data-id="{{ h.id }}">
+        <div class="highlight-text">"{{ h.text }}"</div>
+        {% if h.note %}
+        <div class="highlight-note">{{ h.note }}</div>
+        {% endif %}
+        <div class="highlight-meta">
+          <span>{{ h.created_at|timeago }}</span>
+          <button class="highlight-delete" onclick="deleteHighlight('{{ h.id }}')">Remove</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="highlights-section" id="new-highlights-section" style="{% if highlights %}display:none{% endif %}">
+    <h2 class="item-section-label-warm">highlights</h2>
+    <div id="new-highlights-list"></div>
+  </div>
+
+  {% if spaces %}
+  <div class="item-spaces">
+    {% for s in spaces %}
+    <a href="/space/{{ s.name | urlencode }}" class="space-pill">
+      <span class="space-dot" style="--space-color: {{ s.color }}"></span>{{ s.name }}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if expert %}
+  <div class="item-author">
+    By <a href="/expert/{{ expert.id }}">{{ expert.name }}</a>
+    {% if expert.expertise %}
+    <span class="item-author-expertise">{{ expert.expertise }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if more_items %}
+  <div class="item-more">
+    <h2 class="item-section-label-warm">more in {{ spaces[0].name }}</h2>
+    {% for m in more_items %}
+    <a href="/item/{{ m.id }}" class="more-link">
+      <span>{{ m.title[:70] }}{% if m.title|length > 70 %}…{% endif %}</span>
+      <span class="more-domain">{{ m.domain }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% elif item_type == 'note' %}
+  <h1 class="item-title">Note</h1>
+  <div class="item-meta">
+    <span>{{ item.source }}</span>
+    <span>{{ item.created_at|timeago }}</span>
+  </div>
+  <div class="item-summary">{{ summary }}</div>
+  {% endif %}
+</div>
+
+<!-- Highlight popup (hidden, positioned via JS) -->
+<div class="highlight-popup" id="highlight-popup">
+  <button id="highlight-save-btn">Save highlight</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// --- Overflow menu toggle ---
+(function() {
+  var btn = document.getElementById('overflow-btn');
+  var dropdown = document.getElementById('overflow-dropdown');
+  if (btn && dropdown) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', function() {
+      dropdown.classList.remove('open');
+    });
+    dropdown.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  }
+})();
+
+// --- Download audio button ---
+document.getElementById('download-audio-btn')?.addEventListener('click', async function() {
+  var bookmarkId = this.dataset.bookmarkId;
+  this.textContent = 'Starting...';
+  this.disabled = true;
+  var status = document.getElementById('download-status');
+  try {
+    var resp = await fetch('/api/download-video/' + bookmarkId, {method: 'POST'});
+    var data = await resp.json();
+    if (resp.ok) {
+      status.textContent = 'Download started in background. Refresh in a minute to see the player.';
+      this.textContent = 'Downloading...';
+    } else {
+      status.textContent = data.error || 'Failed';
+      this.textContent = 'Download audio';
+      this.disabled = false;
+    }
+  } catch(e) {
+    status.textContent = 'Error';
+    this.textContent = 'Download audio';
+    this.disabled = false;
+  }
+});
+
+// --- Enrich button ---
+document.getElementById('enrich-btn')?.addEventListener('click', async function() {
+  var btn = this;
+  var bookmarkId = btn.dataset.bookmarkId;
+  btn.textContent = 'Enriching...';
+  btn.disabled = true;
+  try {
+    var resp = await fetch('/api/enrich/' + bookmarkId, {method: 'POST'});
+    var data = await resp.json();
+    if (resp.ok) {
+      btn.textContent = 'Done!';
+      setTimeout(function() { location.reload(); }, 800);
+    } else {
+      btn.textContent = data.error || 'Failed';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = 'Error';
+    btn.disabled = false;
+  }
+});
+
+// --- Archive button ---
+document.getElementById('archive-btn')?.addEventListener('click', async function() {
+  var bookmarkId = this.dataset.bookmarkId;
+  this.textContent = 'Archiving...';
+  this.disabled = true;
+  try {
+    var resp = await fetch('/api/archive/' + bookmarkId, {method: 'POST'});
+    var data = await resp.json();
+    if (resp.ok) {
+      this.textContent = 'Archived!';
+      setTimeout(function() { location.reload(); }, 1200);
+    } else {
+      this.textContent = data.error || 'Failed';
+    }
+  } catch(e) {
+    this.textContent = 'Error';
+  }
+});
+
+// --- Collection button ---
+document.getElementById('add-to-collection-btn')?.addEventListener('click', async function() {
+  var bookmarkId = this.dataset.bookmarkId;
+  var name = prompt('Add to collection (enter name):');
+  if (!name) return;
+  var createResp = await fetch('/api/collections', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name})
+  });
+  var coll = await createResp.json();
+  await fetch('/api/collections/' + coll.id + '/add', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({bookmark_id: bookmarkId})
+  });
+  this.textContent = 'Added!';
+  var btn = this;
+  setTimeout(function() { btn.textContent = 'Add to collection'; }, 2000);
+});
+
+// --- Read status (inline in overflow) ---
+document.querySelectorAll('.read-status-inline').forEach(function(btn) {
+  btn.addEventListener('click', async function() {
+    var bar = this.closest('.read-status-bar-inline');
+    var bookmarkId = bar.dataset.bookmarkId;
+    var status = this.dataset.status;
+    var resp = await fetch('/api/read-status/' + bookmarkId, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status: status})
+    });
+    if (resp.ok) {
+      bar.querySelectorAll('.read-status-inline').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+    }
+  });
+});
+
+// --- Highlighting ---
+var bookmarkId = '{{ item.id }}';
+var popup = document.getElementById('highlight-popup');
+var summary = document.getElementById('item-summary');
+var selectedText = '';
+
+if (summary) {
+  document.addEventListener('mouseup', function(e) {
+    var sel = window.getSelection();
+    var text = sel.toString().trim();
+    if (text && summary.contains(sel.anchorNode)) {
+      selectedText = text;
+      var range = sel.getRangeAt(0);
+      var rect = range.getBoundingClientRect();
+      popup.style.top = (rect.top + window.scrollY - 40) + 'px';
+      popup.style.left = (rect.left + window.scrollX + rect.width / 2 - 60) + 'px';
+      popup.classList.add('visible');
+    } else if (!popup.contains(e.target)) {
+      popup.classList.remove('visible');
+      selectedText = '';
+    }
+  });
+}
+
+document.getElementById('highlight-save-btn')?.addEventListener('click', async function() {
+  if (!selectedText) return;
+  var resp = await fetch('/api/highlights', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({bookmark_id: bookmarkId, text: selectedText})
+  });
+  if (resp.ok) {
+    var data = await resp.json();
+    addHighlightToDOM(data.id, selectedText);
+    popup.classList.remove('visible');
+    window.getSelection().removeAllRanges();
+    selectedText = '';
+  }
+});
+
+function addHighlightToDOM(id, text) {
+  var existingSection = document.getElementById('highlights-list');
+  var newSection = document.getElementById('new-highlights-list');
+  var target = existingSection || newSection;
+  if (!existingSection) {
+    document.getElementById('new-highlights-section').style.display = '';
+  }
+  var div = document.createElement('div');
+  div.className = 'highlight-item';
+  div.dataset.id = id;
+  div.innerHTML = '<div class="highlight-text">"' + text.replace(/</g, '&lt;') + '"</div>' +
+    '<div class="highlight-meta"><span>just now</span>' +
+    '<button class="highlight-delete" onclick="deleteHighlight(\'' + id + '\')">Remove</button></div>';
+  target.prepend(div);
+}
+
+async function deleteHighlight(id) {
+  var resp = await fetch('/api/highlights/' + id, {method: 'DELETE'});
+  if (resp.ok) {
+    var el = document.querySelector('[data-id="' + id + '"]');
+    if (el) el.remove();
+  }
+}
+
+// --- P3: Screenshot capture ---
+document.getElementById('screenshot-btn')?.addEventListener('click', async function() {
+  var id = this.dataset.id;
+  this.textContent = 'Capturing...';
+  this.disabled = true;
+  try {
+    var resp = await fetch('/api/screenshot/' + id, {method: 'POST'});
+    if (resp.ok) { this.textContent = 'Done!'; setTimeout(function() { location.reload(); }, 800); }
+    else { var d = await resp.json(); this.textContent = d.error || 'Failed'; }
+  } catch(e) { this.textContent = 'Error'; }
+});
+
+// --- P3: PDF capture ---
+document.getElementById('pdf-btn')?.addEventListener('click', async function() {
+  var id = this.dataset.id;
+  this.textContent = 'Generating...';
+  this.disabled = true;
+  try {
+    var resp = await fetch('/api/pdf-capture/' + id, {method: 'POST'});
+    if (resp.ok) { this.textContent = 'Done!'; setTimeout(function() { location.reload(); }, 800); }
+    else { var d = await resp.json(); this.textContent = d.error || 'Failed'; }
+  } catch(e) { this.textContent = 'Error'; }
+});
+
+// --- P3: JS render ---
+document.getElementById('render-btn')?.addEventListener('click', async function() {
+  var id = this.dataset.id;
+  this.textContent = 'Rendering...';
+  this.disabled = true;
+  try {
+    var resp = await fetch('/api/render/' + id, {method: 'POST'});
+    if (resp.ok) { var d = await resp.json(); this.textContent = d.word_count + ' words extracted'; setTimeout(function() { location.reload(); }, 1200); }
+    else { var d = await resp.json(); this.textContent = d.error || 'Failed'; }
+  } catch(e) { this.textContent = 'Error'; }
+});
+</script>
+{% endblock %}

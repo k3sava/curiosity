@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% set active = '' %}
+{% block title %}Rules — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Automation rules</h1>
+  <p class="page-subtitle">{{ rules|length }} rule{{ 's' if rules|length != 1 else '' }}</p>
+</div>
+
+<div class="rule-builder" style="margin-bottom: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); padding: 20px;">
+  <div style="margin-bottom: 12px;">
+    <label style="font-size: 13px; font-weight: 500; color: var(--ink-2); display: block; margin-bottom: 4px;">Rule name</label>
+    <input type="text" id="rule-name" class="search-bar" placeholder="e.g. Tag GitHub repos" style="max-width: 400px;">
+  </div>
+
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 500; color: var(--ink-2); display: block; margin-bottom: 8px;">Conditions <span style="color: var(--ink-4); font-weight: 400;">(all must match)</span></label>
+    <div id="conditions-list"></div>
+    <button class="btn-secondary" onclick="addCondition()" style="font-size: 12px; height: 28px; padding: 0 10px; margin-top: 6px;">+ Add condition</button>
+  </div>
+
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 500; color: var(--ink-2); display: block; margin-bottom: 8px;">Actions</label>
+    <div id="actions-list"></div>
+    <button class="btn-secondary" onclick="addAction()" style="font-size: 12px; height: 28px; padding: 0 10px; margin-top: 6px;">+ Add action</button>
+  </div>
+
+  <button id="create-rule-btn" class="action-btn">Create rule</button>
+</div>
+
+<div style="margin-bottom: 24px;">
+  <button id="run-all-btn" class="btn-secondary" style="font-size: 12px; height: 30px; padding: 0 12px;">Run all rules on existing bookmarks</button>
+</div>
+
+<div class="card-grid">
+  {% for r in rules %}
+  <div class="card stagger" style="--i: {{ loop.index0 }}" data-rule-id="{{ r.id }}">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="card-title">{{ r.name }}</div>
+      <span class="badge-high" style="background: {% if r.active %}var(--ok-wash); color: var(--ok){% else %}var(--surface-sunken); color: var(--ink-4){% endif %};">
+        {{ 'active' if r.active else 'paused' }}
+      </span>
+    </div>
+    <div class="card-meta" style="margin-top: 6px;">
+      <span>Run {{ r.run_count }} time{{ 's' if r.run_count != 1 else '' }}</span>
+      <span>{{ r.created_at|timeago }}</span>
+    </div>
+
+    {% set conds = r.conditions|parse_json %}
+    {% set acts = r.actions|parse_json %}
+
+    {% if conds %}
+    <div style="margin-top: 10px; font-size: 12px; color: var(--ink-3);">
+      <strong>If:</strong>
+      {% for c in conds %}
+        {{ c.field }} {{ c.op }} "{{ c.value }}"{% if not loop.last %} AND {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if acts %}
+    <div style="margin-top: 4px; font-size: 12px; color: var(--ink-3);">
+      <strong>Then:</strong>
+      {% for a in acts %}
+        {{ a.type }} → "{{ a.value }}"{% if not loop.last %}, {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 8px; margin-top: 12px;">
+      <button class="action-btn toggle-rule-btn" data-rule-id="{{ r.id }}" style="font-size: 12px;">{{ 'Pause' if r.active else 'Activate' }}</button>
+      <button class="action-btn delete-rule-btn" data-rule-id="{{ r.id }}" style="font-size: 12px; color: var(--signal);">Delete</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if not rules %}
+<div class="empty-state">
+  <p>No rules yet. Create one above to automate your workflow.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+var collections = {{ collections | tojson }};
+
+function addCondition() {
+  var list = document.getElementById('conditions-list');
+  var row = document.createElement('div');
+  row.className = 'rule-row';
+  row.style.cssText = 'display: flex; gap: 6px; margin-bottom: 6px; align-items: center;';
+  row.innerHTML = '<select class="cond-field" style="height: 30px; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 8px; font-size: 12px; background: var(--surface);">' +
+    '<option value="domain">domain</option>' +
+    '<option value="title">title</option>' +
+    '<option value="learning_value">learning value</option>' +
+    '<option value="content_type">content type</option>' +
+    '<option value="source">source</option>' +
+    '</select>' +
+    '<select class="cond-op" style="height: 30px; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 8px; font-size: 12px; background: var(--surface);">' +
+    '<option value="contains">contains</option>' +
+    '<option value="equals">equals</option>' +
+    '<option value="starts_with">starts with</option>' +
+    '</select>' +
+    '<input type="text" class="cond-value search-bar" placeholder="value" style="flex: 1; max-width: 200px; height: 30px;">' +
+    '<button onclick="this.parentElement.remove()" style="background: none; border: none; color: var(--ink-4); cursor: pointer; font-size: 16px;">x</button>';
+  list.appendChild(row);
+}
+
+function addAction() {
+  var list = document.getElementById('actions-list');
+  var row = document.createElement('div');
+  row.className = 'action-row';
+  row.style.cssText = 'display: flex; gap: 6px; margin-bottom: 6px; align-items: center;';
+  var collOptions = collections.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  row.innerHTML = '<select class="action-type" onchange="actionTypeChanged(this)" style="height: 30px; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 8px; font-size: 12px; background: var(--surface);">' +
+    '<option value="add_to_collection">add to collection</option>' +
+    '<option value="set_read_status">set read status</option>' +
+    '</select>' +
+    '<input type="text" class="action-value search-bar" placeholder="collection name or status" style="flex: 1; max-width: 200px; height: 30px;">' +
+    '<button onclick="this.parentElement.remove()" style="background: none; border: none; color: var(--ink-4); cursor: pointer; font-size: 16px;">x</button>';
+  list.appendChild(row);
+}
+
+function actionTypeChanged(sel) {
+  var input = sel.parentElement.querySelector('.action-value');
+  if (sel.value === 'set_read_status') {
+    input.placeholder = 'unread, reading, or read';
+  } else {
+    input.placeholder = 'collection name';
+  }
+}
+
+// Initialize with one condition and one action
+addCondition();
+addAction();
+
+document.getElementById('create-rule-btn').addEventListener('click', async () => {
+  var name = document.getElementById('rule-name').value.trim();
+  if (!name) { alert('Enter a rule name'); return; }
+
+  var conditions = [];
+  document.querySelectorAll('#conditions-list .rule-row').forEach(function(row) {
+    conditions.push({
+      field: row.querySelector('.cond-field').value,
+      op: row.querySelector('.cond-op').value,
+      value: row.querySelector('.cond-value').value.trim()
+    });
+  });
+
+  var actions = [];
+  document.querySelectorAll('#actions-list .action-row').forEach(function(row) {
+    actions.push({
+      type: row.querySelector('.action-type').value,
+      value: row.querySelector('.action-value').value.trim()
+    });
+  });
+
+  if (!conditions.length || !conditions[0].value) { alert('Add at least one condition with a value'); return; }
+  if (!actions.length || !actions[0].value) { alert('Add at least one action with a value'); return; }
+
+  var resp = await fetch('/api/rules', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, conditions: conditions, actions: actions})
+  });
+  if (resp.ok) location.reload();
+  else alert('Failed to create rule');
+});
+
+document.querySelectorAll('.toggle-rule-btn').forEach(function(btn) {
+  btn.addEventListener('click', async function() {
+    var ruleId = this.dataset.ruleId;
+    var resp = await fetch('/api/rules/' + ruleId + '/toggle', {method: 'POST'});
+    if (resp.ok) location.reload();
+  });
+});
+
+document.querySelectorAll('.delete-rule-btn').forEach(function(btn) {
+  btn.addEventListener('click', async function() {
+    if (!confirm('Delete this rule?')) return;
+    var ruleId = this.dataset.ruleId;
+    var resp = await fetch('/api/rules/' + ruleId, {method: 'DELETE'});
+    if (resp.ok) this.closest('.card').remove();
+  });
+});
+
+document.getElementById('run-all-btn').addEventListener('click', async function() {
+  this.textContent = 'Running...';
+  this.disabled = true;
+  try {
+    var resp = await fetch('/api/rules/run-all', {method: 'POST'});
+    var data = await resp.json();
+    this.textContent = 'Done! Checked ' + data.bookmarks_checked + ' bookmarks';
+    setTimeout(function() { location.reload(); }, 2000);
+  } catch(e) {
+    this.textContent = 'Error';
+  }
+});
+</script>
+{% endblock %}

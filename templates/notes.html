@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% set active = 'library' %}
+{% set tab = 'notes' %}
+{% block title %}Notes — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Library</h1>
+  <p class="page-subtitle">{{ notes|length }} note{{ 's' if notes|length != 1 else '' }}</p>
+</div>
+
+{% include '_library_tabs.html' %}
+
+<div class="note-create-form" style="margin-bottom: 32px;">
+  <textarea id="note-input" class="note-textarea" placeholder="Write a note..." rows="3"></textarea>
+  <button id="save-note-btn" class="action-btn" style="margin-top: 8px;">Save</button>
+</div>
+
+<div class="card-grid">
+  {% for n in notes %}
+  <div class="card stagger" style="--i: {{ loop.index0 }}" data-note-id="{{ n.id }}">
+    <div class="card-summary" style="white-space: pre-wrap;">{{ n.content }}</div>
+    <div class="card-meta" style="margin-top: 10px;">
+      <span>{{ n.source or 'web_ui' }}</span>
+      <span>{{ n.created_at|timeago }}</span>
+    </div>
+    <button class="delete-note-btn action-btn" data-note-id="{{ n.id }}" style="margin-top: 8px; color: var(--signal); font-size: 12px;">Delete</button>
+  </div>
+  {% endfor %}
+</div>
+
+{% if not notes %}
+<div class="empty-state">
+  <p>Capture a thought. No URL needed.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('save-note-btn').addEventListener('click', async () => {
+  const input = document.getElementById('note-input');
+  const content = input.value.trim();
+  if (!content) return;
+  const btn = document.getElementById('save-note-btn');
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/note', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({content, source: 'notes_page'})
+    });
+    if (resp.ok) location.reload();
+    else alert('Failed to save note');
+  } finally {
+    btn.textContent = 'Save';
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('note-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    document.getElementById('save-note-btn').click();
+  }
+});
+
+document.querySelectorAll('.delete-note-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    if (!confirm('Delete this note?')) return;
+    const noteId = this.dataset.noteId;
+    const resp = await fetch('/api/notes/' + noteId, {method: 'DELETE'});
+    if (resp.ok) this.closest('.card').remove();
+  });
+});
+</script>
+{% endblock %}

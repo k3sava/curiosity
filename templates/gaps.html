@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% set active = 'discover' %}
+{% set tab = 'explore' %}
+{% block title %}discover — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Discover</h1>
+  <p class="page-subtitle">What to explore next</p>
+</div>
+
+{% include '_discover_tabs.html' %}
+
+{% if gaps %}
+{% set needs = [] %}
+{% set strong = [] %}
+{% for g in gaps %}
+  {% if g.status != 'covered' %}{% if needs.append(g) %}{% endif %}
+  {% else %}{% if strong.append(g) %}{% endif %}{% endif %}
+{% endfor %}
+
+<div class="briefing" style="margin-bottom: 32px;">
+  {% if strong %}
+  <p class="briefing-text">You're well-read on {% for s in strong[:3] %}<strong>{{ s.name }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}{% if strong|length > 3 %} and {{ strong|length - 3 }} more{% endif %}.{% if needs %} You could use more on {% for n in needs[:3] %}<strong>{{ n.name }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}{% if needs|length > 3 %} and {{ needs|length - 3 }} more{% endif %}.{% endif %}</p>
+  {% elif needs %}
+  <p class="briefing-text">You're building knowledge across {{ gaps|length }} areas. Here's where to dig deeper.</p>
+  {% endif %}
+</div>
+
+{% if needs %}
+<div class="discover-list">
+  {% for g in needs[:6] %}
+  <div class="discover-card stagger" style="--i: {{ loop.index0 }}">
+    <div class="discover-name">{{ g.name }}</div>
+    <div class="discover-detail">
+      {{ g.count }} source{{ 's' if g.count != 1 else '' }} saved.{% if g.search_queries %} Try "{{ g.search_queries[0] }}"{% if g.search_queries|length > 1 %} or "{{ g.search_queries[1] }}"{% endif %}.{% endif %}
+    </div>
+    {% if g.search_queries %}
+    <div class="discover-actions">
+      {% for q in g.search_queries[:2] %}
+      <a href="/library?q={{ q|urlencode }}" class="discover-search-link">search for this →</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% if needs|length > 6 %}
+<details class="show-more" style="margin-top: 16px;">
+  <summary class="show-more-btn">{{ needs|length - 6 }} more areas →</summary>
+  <div class="discover-list" style="margin-top: 12px;">
+    {% for g in needs[6:] %}
+    <div class="discover-card">
+      <div class="discover-name">{{ g.name }}</div>
+      <div class="discover-detail">{{ g.count }} source{{ 's' if g.count != 1 else '' }} saved.</div>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+{% endif %}
+
+{% if strong %}
+<section class="home-section" style="margin-top: 32px;">
+  <h2 class="section-label-warm">your strong areas</h2>
+  <div class="strong-areas">
+    {% for g in strong %}
+    <span class="strong-area">{{ g.name }} <span class="footer-count">{{ g.count }}</span></span>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <p>Save a few more bookmarks. curiosity learns what you're interested in and suggests what to explore next.</p>
+</div>
+{% endif %}
+{% endblock %}

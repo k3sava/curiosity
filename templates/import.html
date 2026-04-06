@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% set active = '' %}
+{% block title %}Import — curiosity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Import</h1>
+  <p class="page-subtitle">Bring in bookmarks from other services</p>
+</div>
+
+<div class="card-grid" style="grid-template-columns: 1fr 1fr; max-width: 700px;">
+  <div class="card">
+    <div class="card-title">Pocket</div>
+    <div class="card-summary" style="margin-top: 6px;">Import from a Pocket HTML export file. Go to getpocket.com/export to download yours.</div>
+    <label class="upload-label action-btn" style="cursor: pointer; margin-top: 12px; display: inline-block;">
+      Upload Pocket export
+      <input type="file" accept=".html,.htm" id="pocket-file" style="display: none;">
+    </label>
+    <div id="pocket-result" style="margin-top: 8px; font-size: 12px; color: var(--ink-3);"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Omnivore</div>
+    <div class="card-summary" style="margin-top: 6px;">Import from an Omnivore JSON export. Export from Omnivore settings before the service shuts down.</div>
+    <label class="upload-label action-btn" style="cursor: pointer; margin-top: 12px; display: inline-block;">
+      Upload Omnivore export
+      <input type="file" accept=".json" id="omnivore-file" style="display: none;">
+    </label>
+    <div id="omnivore-result" style="margin-top: 8px; font-size: 12px; color: var(--ink-3);"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function uploadImport(inputId, endpoint, resultId) {
+  var input = document.getElementById(inputId);
+  var resultEl = document.getElementById(resultId);
+  input.addEventListener('change', async function() {
+    if (!this.files.length) return;
+    var formData = new FormData();
+    formData.append('file', this.files[0]);
+    resultEl.textContent = 'Importing...';
+    try {
+      var resp = await fetch(endpoint, {method: 'POST', body: formData});
+      var data = await resp.json();
+      if (resp.ok) {
+        resultEl.textContent = data.imported + ' imported, ' + data.skipped + ' skipped (duplicates)';
+        resultEl.style.color = 'var(--ok)';
+      } else {
+        resultEl.textContent = data.error || 'Import failed';
+        resultEl.style.color = 'var(--err)';
+      }
+    } catch(e) {
+      resultEl.textContent = 'Error: ' + e.message;
+      resultEl.style.color = 'var(--err)';
+    }
+  });
+}
+
+uploadImport('pocket-file', '/api/import/pocket', 'pocket-result');
+uploadImport('omnivore-file', '/api/import/omnivore', 'omnivore-result');
+</script>
+{% endblock %}
