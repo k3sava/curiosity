@@ -321,7 +321,7 @@ def get_artemis_db():
 
 
 def parse_json_field(value):
-    if not value:
+    if not value or not isinstance(value, str):
         return []
     try:
         return json.loads(value)
@@ -330,11 +330,11 @@ def parse_json_field(value):
 
 
 def timeago(dt_str):
-    if not dt_str:
+    if not dt_str or not isinstance(dt_str, str):
         return ""
     try:
         dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
         return str(dt_str)[:10] if dt_str else ""
     now = datetime.now(timezone.utc)
     if dt.tzinfo is None:
@@ -556,22 +556,16 @@ async def home(request: Request):
     }
 
     db.close()
-    try:
-        return templates.TemplateResponse("home.html", {
-            "request": request,
-            "spaces": spaces_data if spaces_data else [],
-            "picked": picked if picked else [],
-            "visited": visited if visited else [],
-            "fresh": fresh if fresh else [],
-            "stats": stats,
-            "trending": trending if trending else [],
-            "top_domains": top_domains if top_domains else [],
-        })
-    except Exception as e:
-        # Fallback for fresh installs with template errors
-        return HTMLResponse(f"""<html><head><title>curiosity</title></head><body>
-        <h1>curiosity</h1><p>Welcome. <a href="/library">Go to library</a> or paste a URL to get started.</p>
-        <p style="color:red;font-size:12px">Debug: {e}</p></body></html>""")
+    return templates.TemplateResponse("home.html", {
+        "request": request,
+        "spaces": spaces_data if spaces_data else [],
+        "picked": picked if picked else [],
+        "visited": visited if visited else [],
+        "fresh": fresh if fresh else [],
+        "stats": stats,
+        "trending": trending if trending else [],
+        "top_domains": top_domains if top_domains else [],
+    })
 
 
 @app.get("/library", response_class=HTMLResponse)
