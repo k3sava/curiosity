@@ -4,7 +4,7 @@
 
 {% block content %}
 
-{% if not stats or stats.total == 0 %}
+{% if not stats or (stats.total == 0 and stats.total_all == 0) %}
 <div class="onboarding">
   <h1 class="onboarding-title">Your knowledge starts here.</h1>
   <p class="onboarding-desc">Save a link. curiosity reads it, pulls out the key ideas, finds<br>connections to things you've saved before, and tells you what's missing.</p>
@@ -24,7 +24,7 @@
   </div>
 </div>
 
-{% elif stats.total < 10 %}
+{% elif stats.total_all < 10 %}
 <div class="briefing">
   <p class="briefing-text">You've saved <strong>{{ stats.total }}</strong> item{{ 's' if stats.total != 1 else '' }}. A few more and curiosity starts connecting ideas, finding gaps, and surfacing things you'd otherwise forget.</p>
 </div>

@@ -63,13 +63,12 @@
 </div>
 
 <div class="filter-chips">
-  {% if current_space %}
-  <a href="/library?sort={{ current_sort }}{% if current_domain %}&domain={{ current_domain|urlencode }}{% endif %}{% if current_read_status %}&read_status={{ current_read_status }}{% endif %}" class="space-pill active" style="--space-color: {{ SPACES[current_space].color if current_space in SPACES else '#666' }}">
-    <span class="space-dot"></span>{{ current_space }} x
-  </a>
-  {% endif %}
   {% for sname, sdata in SPACES.items() %}
-  {% if sname != current_space %}
+  {% if sname == current_space %}
+  <a href="/library?sort={{ current_sort }}{% if current_domain %}&domain={{ current_domain|urlencode }}{% endif %}{% if current_read_status %}&read_status={{ current_read_status }}{% endif %}" class="space-pill active" style="--space-color: {{ sdata.color }}">
+    <span class="space-dot"></span>{{ sname }} x
+  </a>
+  {% else %}
   <a href="/library?space={{ sname|urlencode }}&sort={{ current_sort }}{% if current_domain %}&domain={{ current_domain|urlencode }}{% endif %}{% if current_read_status %}&read_status={{ current_read_status }}{% endif %}" class="space-pill" style="--space-color: {{ sdata.color }}">
     <span class="space-dot"></span>{{ sname }}
   </a>

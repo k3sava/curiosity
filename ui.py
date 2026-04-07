@@ -37,8 +37,6 @@ ARTEMIS_DB = Path(__file__).parent.parent.parent / "data" / "artemis.db"
 app = FastAPI(title="curiosity")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-templates.env.auto_reload = True
-templates.env.cache = None
 
 
 # --- Spaces: curated knowledge areas ---
@@ -160,68 +158,7 @@ BLOCKED_TITLE_PATTERNS = ["applytojob.com", "Career Page"]
 def get_db():
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    # Core tables (normally created by MCP server, but needed for standalone)
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS bookmarks (
-            id TEXT PRIMARY KEY, url TEXT NOT NULL UNIQUE, final_url TEXT,
-            title TEXT, domain TEXT, source TEXT NOT NULL DEFAULT 'manual',
-            chrome_folder TEXT, added_at TEXT NOT NULL, chrome_added_at TEXT,
-            status TEXT DEFAULT 'pending', updated_at TEXT
-        );
-        CREATE TABLE IF NOT EXISTS content (
-            bookmark_id TEXT PRIMARY KEY REFERENCES bookmarks(id),
-            raw_text TEXT, meta_description TEXT, summary TEXT,
-            key_insights TEXT, content_type TEXT, learning_value TEXT,
-            word_count INTEGER, fetched_at TEXT, enriched_at TEXT
-        );
-        CREATE TABLE IF NOT EXISTS experts (
-            id TEXT PRIMARY KEY, name TEXT NOT NULL, expertise TEXT,
-            perspective TEXT, credentials TEXT, home_url TEXT,
-            followed INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT
-        );
-        CREATE TABLE IF NOT EXISTS bookmark_experts (
-            bookmark_id TEXT REFERENCES bookmarks(id),
-            expert_id TEXT REFERENCES experts(id),
-            PRIMARY KEY (bookmark_id, expert_id)
-        );
-        CREATE TABLE IF NOT EXISTS topics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL, category TEXT, bookmark_count INTEGER DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS bookmark_topics (
-            bookmark_id TEXT REFERENCES bookmarks(id),
-            topic_id INTEGER REFERENCES topics(id),
-            relevance REAL DEFAULT 0.5,
-            PRIMARY KEY (bookmark_id, topic_id)
-        );
-        CREATE TABLE IF NOT EXISTS connections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            bookmark_a TEXT, bookmark_b TEXT, connection_type TEXT,
-            strength REAL, explanation TEXT, discovered_at TEXT,
-            UNIQUE(bookmark_a, bookmark_b, connection_type)
-        );
-        CREATE TABLE IF NOT EXISTS discoveries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            bookmark_id TEXT, triggered_by TEXT, search_query TEXT,
-            relevance_score REAL, discovered_at TEXT
-        );
-        CREATE TABLE IF NOT EXISTS domains (
-            id TEXT PRIMARY KEY, name TEXT NOT NULL, keywords TEXT,
-            target_sources INTEGER DEFAULT 20, priority REAL DEFAULT 1.0,
-            search_queries TEXT, updated_at TEXT
-        );
-        CREATE TABLE IF NOT EXISTS digests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            period_start TEXT, period_end TEXT, digest_type TEXT,
-            content TEXT, topics_covered TEXT, gaps_identified TEXT, generated_at TEXT
-        );
-        CREATE VIRTUAL TABLE IF NOT EXISTS bookmarks_fts USING fts5(
-            bookmark_id, title, summary, key_insights, raw_text,
-            tokenize='porter unicode61'
-        );
-    """)
-    # UI-specific tables
+    # Ensure UI-specific tables exist
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS collections (
             id TEXT PRIMARY KEY,
@@ -321,7 +258,7 @@ def get_artemis_db():
 
 
 def parse_json_field(value):
-    if not value or not isinstance(value, str):
+    if not value:
         return []
     try:
         return json.loads(value)
@@ -330,11 +267,11 @@ def parse_json_field(value):
 
 
 def timeago(dt_str):
-    if not dt_str or not isinstance(dt_str, str):
+    if not dt_str:
         return ""
     try:
         dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-    except (ValueError, TypeError, AttributeError):
+    except (ValueError, TypeError):
         return str(dt_str)[:10] if dt_str else ""
     now = datetime.now(timezone.utc)
     if dt.tzinfo is None:
@@ -417,8 +354,8 @@ def space_topic_ids(db, space_name):
 # Register template helpers
 templates.env.filters["parse_json"] = parse_json_field
 templates.env.filters["timeago"] = timeago
+templates.env.globals["SPACES"] = SPACES
 templates.env.globals["quote"] = quote
-templates.env.globals["get_space_color"] = lambda name: SPACES.get(name, {}).get("color", "#666")
 
 
 # --- Pages ---
@@ -549,6 +486,7 @@ async def home(request: Request):
 
     stats = {
         "total": total_enriched,
+        "total_all": total_all,
         "enriched_pct": enriched_pct,
         "high_value": high_value_count,
         "this_week": this_week_count,
@@ -558,13 +496,13 @@ async def home(request: Request):
     db.close()
     return templates.TemplateResponse("home.html", {
         "request": request,
-        "spaces": spaces_data if spaces_data else [],
-        "picked": picked if picked else [],
-        "visited": visited if visited else [],
-        "fresh": fresh if fresh else [],
+        "spaces": spaces_data,
+        "picked": picked,
+        "visited": visited,
+        "fresh": fresh,
         "stats": stats,
-        "trending": trending if trending else [],
-        "top_domains": top_domains if top_domains else [],
+        "trending": trending,
+        "top_domains": top_domains,
     })
 
 
@@ -622,7 +560,7 @@ async def library(
     """).fetchall()
 
     db.close()
-    return templates.TemplateResponse("library.html", {"SPACES": SPACES,
+    return templates.TemplateResponse("library.html", {
         "request": request,
         "bookmarks": bookmarks,
         "domains": domains,
@@ -710,7 +648,7 @@ async def space_view(request: Request, name: str):
         """, topic_ids).fetchall()
 
     db.close()
-    return templates.TemplateResponse("space.html", {"SPACES": SPACES,
+    return templates.TemplateResponse("space.html", {
         "request": request,
         "space": space_data,
         "items": items,
@@ -743,7 +681,7 @@ async def topic_redirect(request: Request, name: str):
         ORDER BY b.added_at DESC
     """, (topic["id"],)).fetchall()
     db.close()
-    return templates.TemplateResponse("space.html", {"SPACES": SPACES,
+    return templates.TemplateResponse("space.html", {
         "request": request,
         "space": {"name": name, "icon": "·", "color": "#6b7280", "topics": [name]},
         "items": items,
@@ -2858,12 +2796,5 @@ async def api_save_discovered(request: Request):
 
 
 if __name__ == "__main__":
-    import sys as _sys
-    _host = "127.0.0.1"
-    _port = 8080
-    if "--host" in _sys.argv:
-        _host = _sys.argv[_sys.argv.index("--host") + 1]
-    if "--port" in _sys.argv:
-        _port = int(_sys.argv[_sys.argv.index("--port") + 1])
-    print(f"curiosity — http://{_host}:{_port}")
-    uvicorn.run(app, host=_host, port=_port)
+    print("curiosity — http://localhost:8080")
+    uvicorn.run(app, host="127.0.0.1", port=8080)
