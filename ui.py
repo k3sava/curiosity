@@ -2564,13 +2564,59 @@ async def serve_image(filename: str):
     return FileResponse(str(path), media_type=media_types.get(ext, "application/octet-stream"))
 
 
+async def _call_llm(prompt: str) -> str:
+    """Call an LLM. Tries: Ollama (free local) → Gemini (free tier) → Anthropic (paid)."""
+    import os
+
+    # 1. Ollama (free, local)
+    ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(f"{ollama_url}/api/generate", json={
+                "model": os.environ.get("OLLAMA_MODEL", "llama3"),
+                "prompt": prompt, "stream": False,
+            })
+            if resp.status_code == 200:
+                return resp.json().get("response", "")
+    except Exception:
+        pass
+
+    # 2. Google Gemini (free tier — 15 RPM, 1M tokens/day)
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if gemini_key:
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}",
+                    json={"contents": [{"parts": [{"text": prompt}]}]},
+                )
+                if resp.status_code == 200:
+                    return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            pass
+
+    # 3. Anthropic (paid)
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    if anthropic_key:
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                    json={"model": "claude-haiku-4-5-20251001", "max_tokens": 1024, "messages": [{"role": "user", "content": prompt}]},
+                )
+                if resp.status_code == 200:
+                    return resp.json()["content"][0]["text"]
+        except Exception:
+            pass
+
+    return ""
+
+
 @app.post("/api/enrich/{bookmark_id}")
 async def api_enrich_bookmark(bookmark_id: str):
-    """Enrich a bookmark using the Anthropic API directly. Requires ANTHROPIC_API_KEY env var."""
+    """Enrich a bookmark with AI. Tries Ollama (free) → Gemini (free) → Anthropic."""
     import os
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return JSONResponse({"error": "To enrich bookmarks, run: export ANTHROPIC_API_KEY=sk-ant-... then restart curiosity. Get a key at console.anthropic.com."}, status_code=400)
 
     db = get_db()
     bookmark = db.execute("""
@@ -2584,7 +2630,6 @@ async def api_enrich_bookmark(bookmark_id: str):
 
     raw_text = bookmark["raw_text"] or ""
     if not raw_text:
-        # Fetch the page first
         try:
             async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
                 resp = await client.get(bookmark["url"])
@@ -2602,7 +2647,6 @@ async def api_enrich_bookmark(bookmark_id: str):
             db.close()
             return JSONResponse({"error": f"Failed to fetch page: {e}"}, status_code=500)
 
-    # Call Anthropic API
     prompt = f"""Analyze this web page and return a JSON object with these fields:
 - "summary": 2-3 sentence summary
 - "topics": array of 3-7 lowercase topic tags
@@ -2620,23 +2664,23 @@ Content (truncated to 6000 chars):
 
 Return ONLY valid JSON, no markdown fences."""
 
+    text = await _call_llm(prompt)
+    if not text:
+        db.close()
+        has_ollama = False
+        try:
+            r = httpx.get(os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/tags", timeout=2)
+            has_ollama = r.status_code == 200
+        except Exception:
+            pass
+        if has_ollama:
+            return JSONResponse({"error": "Ollama is running but the model failed. Try: ollama pull llama3"}, status_code=400)
+        return JSONResponse({"error": "No AI provider found. Install Ollama (free, local): ollama.com — or set GEMINI_API_KEY (free tier) or ANTHROPIC_API_KEY."}, status_code=400)
+
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": "claude-haiku-4-5-20251001",
-                    "max_tokens": 1024,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-            )
-            data = resp.json()
-            text = data["content"][0]["text"]
+        # Clean markdown fences if present
+        if text.strip().startswith("```"):
+            text = text.strip().split("\n", 1)[1].rsplit("```", 1)[0]
 
             # Parse the JSON response
             enrichment = json.loads(text)

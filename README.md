@@ -53,13 +53,30 @@ docker run -p 8080:8080 -v curiosity_data:/data ghcr.io/k3sava/curiosity
 
 ## The AI part
 
-curiosity uses AI to read your bookmarks. Two ways:
+curiosity uses AI to read your bookmarks. It tries three providers in order — you only need one:
 
-**With Claude Code:** If you already have a Claude subscription and use Claude Code, curiosity runs as an MCP server. Enrichment happens in your session — no extra API calls beyond your existing subscription.
+**Ollama (free, local):** Install [Ollama](https://ollama.com), pull a model, done. No API key, no cloud, no cost. This is the default.
 
-**With an API key:** Set `ANTHROPIC_API_KEY` and curiosity calls the Anthropic API directly. Uses Haiku. About a tenth of a penny per bookmark. No subscription needed, just pay-as-you-go.
+```
+ollama pull llama3
+curiosity serve
+```
 
-**Without AI:** The web UI works fine without either. You can save, search, organize, and browse manually. AI just adds the automatic summaries, insights, and tagging.
+**Google Gemini (free tier):** Get a free key from [Google AI Studio](https://aistudio.google.com). 15 requests/min, 1M tokens/day. More than enough.
+
+```
+export GEMINI_API_KEY=your-key
+curiosity serve
+```
+
+**Anthropic (paid):** If you want Claude quality. About a tenth of a penny per bookmark.
+
+```
+export ANTHROPIC_API_KEY=sk-ant-...
+curiosity serve
+```
+
+**Without any AI:** The web UI works fine. You can save, search, organize, and browse. AI adds the automatic summaries, insights, and tagging — but it's not required.
 
 ## Why "curiosity"
 
