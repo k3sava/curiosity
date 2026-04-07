@@ -415,8 +415,8 @@ def space_topic_ids(db, space_name):
 # Register template helpers
 templates.env.filters["parse_json"] = parse_json_field
 templates.env.filters["timeago"] = timeago
-templates.env.globals["SPACES"] = SPACES
 templates.env.globals["quote"] = quote
+templates.env.globals["get_space_color"] = lambda name: SPACES.get(name, {}).get("color", "#666")
 
 
 # --- Pages ---
@@ -626,7 +626,7 @@ async def library(
     """).fetchall()
 
     db.close()
-    return templates.TemplateResponse("library.html", {
+    return templates.TemplateResponse("library.html", {"SPACES": SPACES,
         "request": request,
         "bookmarks": bookmarks,
         "domains": domains,
@@ -714,7 +714,7 @@ async def space_view(request: Request, name: str):
         """, topic_ids).fetchall()
 
     db.close()
-    return templates.TemplateResponse("space.html", {
+    return templates.TemplateResponse("space.html", {"SPACES": SPACES,
         "request": request,
         "space": space_data,
         "items": items,
@@ -747,7 +747,7 @@ async def topic_redirect(request: Request, name: str):
         ORDER BY b.added_at DESC
     """, (topic["id"],)).fetchall()
     db.close()
-    return templates.TemplateResponse("space.html", {
+    return templates.TemplateResponse("space.html", {"SPACES": SPACES,
         "request": request,
         "space": {"name": name, "icon": "·", "color": "#6b7280", "topics": [name]},
         "items": items,
