@@ -55,11 +55,11 @@ docker run -p 8080:8080 -v curiosity_data:/data ghcr.io/k3sava/curiosity
 
 curiosity uses AI to read your bookmarks. Two ways:
 
-**Free way:** It runs as an MCP server inside Claude Code. Claude reads the page in your session. No API calls. No cost. This is how I use it.
+**With Claude Code:** If you already have a Claude subscription and use Claude Code, curiosity runs as an MCP server. Enrichment happens in your session — no extra API calls beyond your existing subscription.
 
-**Standalone way:** Set your `ANTHROPIC_API_KEY`. Uses Haiku. About a tenth of a penny per bookmark.
+**With an API key:** Set `ANTHROPIC_API_KEY` and curiosity calls the Anthropic API directly. Uses Haiku. About a tenth of a penny per bookmark. No subscription needed, just pay-as-you-go.
 
-Either way, the AI is invisible. You save a link. Insights appear. You don't think about it.
+**Without AI:** The web UI works fine without either. You can save, search, organize, and browse manually. AI just adds the automatic summaries, insights, and tagging.
 
 ## Why "curiosity"
 
@@ -69,7 +69,7 @@ Also: curiosity makes the cat. Meow.
 
 ## Tech
 
-Python. FastAPI. SQLite. Jinja2 templates. No React. No Electron. No build step. Runs on a Raspberry Pi.
+Python. FastAPI. SQLite. Jinja2 templates. No React. No Electron. No build step. Server-rendered. Lightweight.
 
 ## Contributing
 
