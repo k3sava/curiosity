@@ -554,16 +554,22 @@ async def home(request: Request):
     }
 
     db.close()
-    return templates.TemplateResponse("home.html", {
-        "request": request,
-        "spaces": spaces_data,
-        "picked": picked,
-        "visited": visited,
-        "fresh": fresh,
-        "stats": stats,
-        "trending": trending,
-        "top_domains": top_domains,
-    })
+    try:
+        return templates.TemplateResponse("home.html", {
+            "request": request,
+            "spaces": spaces_data if spaces_data else [],
+            "picked": picked if picked else [],
+            "visited": visited if visited else [],
+            "fresh": fresh if fresh else [],
+            "stats": stats,
+            "trending": trending if trending else [],
+            "top_domains": top_domains if top_domains else [],
+        })
+    except Exception as e:
+        # Fallback for fresh installs with template errors
+        return HTMLResponse(f"""<html><head><title>curiosity</title></head><body>
+        <h1>curiosity</h1><p>Welcome. <a href="/library">Go to library</a> or paste a URL to get started.</p>
+        <p style="color:red;font-size:12px">Debug: {e}</p></body></html>""")
 
 
 @app.get("/library", response_class=HTMLResponse)
