@@ -158,7 +158,68 @@ BLOCKED_TITLE_PATTERNS = ["applytojob.com", "Career Page"]
 def get_db():
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
-    # Ensure UI-specific tables exist
+    conn.execute("PRAGMA journal_mode=WAL")
+    # Core tables (normally created by MCP server, but needed for standalone)
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS bookmarks (
+            id TEXT PRIMARY KEY, url TEXT NOT NULL UNIQUE, final_url TEXT,
+            title TEXT, domain TEXT, source TEXT NOT NULL DEFAULT 'manual',
+            chrome_folder TEXT, added_at TEXT NOT NULL, chrome_added_at TEXT,
+            status TEXT DEFAULT 'pending', updated_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS content (
+            bookmark_id TEXT PRIMARY KEY REFERENCES bookmarks(id),
+            raw_text TEXT, meta_description TEXT, summary TEXT,
+            key_insights TEXT, content_type TEXT, learning_value TEXT,
+            word_count INTEGER, fetched_at TEXT, enriched_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS experts (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, expertise TEXT,
+            perspective TEXT, credentials TEXT, home_url TEXT,
+            followed INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS bookmark_experts (
+            bookmark_id TEXT REFERENCES bookmarks(id),
+            expert_id TEXT REFERENCES experts(id),
+            PRIMARY KEY (bookmark_id, expert_id)
+        );
+        CREATE TABLE IF NOT EXISTS topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL, category TEXT, bookmark_count INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS bookmark_topics (
+            bookmark_id TEXT REFERENCES bookmarks(id),
+            topic_id INTEGER REFERENCES topics(id),
+            relevance REAL DEFAULT 0.5,
+            PRIMARY KEY (bookmark_id, topic_id)
+        );
+        CREATE TABLE IF NOT EXISTS connections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bookmark_a TEXT, bookmark_b TEXT, connection_type TEXT,
+            strength REAL, explanation TEXT, discovered_at TEXT,
+            UNIQUE(bookmark_a, bookmark_b, connection_type)
+        );
+        CREATE TABLE IF NOT EXISTS discoveries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bookmark_id TEXT, triggered_by TEXT, search_query TEXT,
+            relevance_score REAL, discovered_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS domains (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, keywords TEXT,
+            target_sources INTEGER DEFAULT 20, priority REAL DEFAULT 1.0,
+            search_queries TEXT, updated_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS digests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            period_start TEXT, period_end TEXT, digest_type TEXT,
+            content TEXT, topics_covered TEXT, gaps_identified TEXT, generated_at TEXT
+        );
+        CREATE VIRTUAL TABLE IF NOT EXISTS bookmarks_fts USING fts5(
+            bookmark_id, title, summary, key_insights, raw_text,
+            tokenize='porter unicode61'
+        );
+    """)
+    # UI-specific tables
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS collections (
             id TEXT PRIMARY KEY,
