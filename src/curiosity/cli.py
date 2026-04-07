@@ -11,13 +11,19 @@ PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent  # mcp/curiosity/
 
 def _serve(port: int = 8080, host: str = "127.0.0.1") -> None:
     """Start the curiosity web UI."""
+    import os
     import uvicorn
 
-    # ui.py lives at mcp/curiosity/ui.py, outside the installed package.
-    # Add its directory to sys.path so uvicorn can import it.
+    # ui.py lives alongside the package root. Find it.
     ui_dir = str(PACKAGE_ROOT)
     if ui_dir not in sys.path:
         sys.path.insert(0, ui_dir)
+
+    # Also try /app (Docker) and cwd
+    for candidate in ["/app", os.getcwd()]:
+        ui_path = os.path.join(candidate, "ui.py")
+        if os.path.exists(ui_path) and candidate not in sys.path:
+            sys.path.insert(0, candidate)
 
     print(f"curiosity — http://{host}:{port}")
     uvicorn.run("ui:app", host=host, port=port)

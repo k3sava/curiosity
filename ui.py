@@ -2795,5 +2795,12 @@ async def api_save_discovered(request: Request):
 
 
 if __name__ == "__main__":
-    print("curiosity — http://localhost:8080")
-    uvicorn.run(app, host="127.0.0.1", port=8080)
+    import sys as _sys
+    _host = "127.0.0.1"
+    _port = 8080
+    if "--host" in _sys.argv:
+        _host = _sys.argv[_sys.argv.index("--host") + 1]
+    if "--port" in _sys.argv:
+        _port = int(_sys.argv[_sys.argv.index("--port") + 1])
+    print(f"curiosity — http://{_host}:{_port}")
+    uvicorn.run(app, host=_host, port=_port)
