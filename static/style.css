@@ -1492,6 +1492,13 @@ a.trending-item:hover { background: var(--surface-sunken); padding-left: 8px; ma
 .show-more summary::-webkit-details-marker { display: none; }
 .show-more summary:hover { color: var(--ink); }
 
+/* --- Discover (go deeper) --- */
+.item-discover { border-top: 1px solid var(--line-soft); padding-top: 24px; margin-top: 32px; }
+.discover-hint { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+.discover-result { padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.discover-result-title { font-size: 14px; font-weight: 500; color: var(--ink); }
+.discover-result-url { font-size: 12px; color: var(--ink-4); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* --- Reduced motion --- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }

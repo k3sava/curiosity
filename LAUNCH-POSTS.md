@@ -2,27 +2,19 @@
 
 ## 1. Hacker News — Show HN
 
-**Title:** Show HN: curiosity – one place for everything you find on the web
+**Title:** Show HN: curiosity – save one link, get the full picture
 
-I browse a lot. I save a lot. I save things everywhere — Chrome bookmarks, Pocket, Slack, tabs I swear I'll get back to.
+I wanted to learn about positioning. Found one good article. Wanted more — different angles, counterpoints, frameworks I hadn't seen. Ended up with 40 tabs open and no system for any of it.
 
-Over 10 years I accumulated thousands of saved links. A personal internet I'd never revisit.
-
-I tried Raindrop. Pocket. Hoarder. They organize links. That was never my problem. My problem was I had no system. No way to connect ideas across topics. No way to remember the good stuff before it faded into the pile.
+That's the pattern. You find one thing. You want the full picture. You go down the rabbit hole. And nothing connects. Nothing sticks.
 
 So I built curiosity.
 
-Save a link. curiosity reads the page, pulls out the key ideas, connects it to things you've saved before, and makes sure you don't forget the important parts. Every morning it resurfaces something you saved weeks ago and goes: *remember this?*
+Save a link. curiosity reads the page, pulls out the key ideas, and helps you go deeper — finding related pieces, different perspectives, deeper dives on the same topic. Then it quietly handles the rest. Summarizes. Tags. Organizes. Connects ideas across topics. Resurfaces old insights before you forget them.
 
-It's free, open source, and local-first. SQLite on your machine. No cloud. No subscription. No tracking.
+One place for every rabbit hole.
 
-AI enrichment is free via Claude Code, or ~$0.001/bookmark with the Anthropic API.
-
-The basics: save URLs, import Chrome bookmarks, upload PDFs, subscribe to RSS feeds, search everything.
-
-The interesting stuff: daily review cards, connections between bookmarks, a quiet tracker that notices which topics you're ignoring.
-
-The power tools: automation rules, bulk actions, highlights, collections, page archival, command palette.
+It's free, open source, local-first. SQLite on your machine. AI enrichment is free via Claude Code, or ~$0.001/bookmark with the Anthropic API.
 
 ```
 pip install curiosity-kb && curiosity serve
@@ -30,59 +22,53 @@ pip install curiosity-kb && curiosity serve
 
 GitHub: https://github.com/k3sava/curiosity
 
-Built this for myself. Turns out organizing your curiosity is a universal problem. Happy to answer questions.
+Built this for myself because I kept falling into research rabbit holes with no system to catch what I found. Turns out that's a pretty common problem.
 
 ---
 
 ## 2. Product Hunt
 
-**Tagline:** One place for everything you find on the web. curiosity makes the cat.
+**Tagline:** Save one link. Get the full picture. curiosity makes the cat.
 
 **Description:**
 
-I browse a lot. Articles, repos, talks, threads. I save them everywhere. I never go back.
+You find one article about a topic. You want more — different angles, deeper dives, counterpoints. You open 40 tabs. You bookmark some. You close the browser. You never go back.
 
-Sound familiar?
+curiosity fixes that.
 
-curiosity is one place for all of it. Save a link. It reads the page, pulls out what matters, connects it to things you've already saved, and makes sure you don't forget the important parts.
+Save a link. It reads the page, pulls out the key ideas, and helps you go deeper — finding related content you wouldn't have searched for. Then it organizes everything automatically. Connects ideas across topics. And resurfaces what matters before you forget it.
 
-Not a bookmark manager. Not a read-it-later app. A system for actually learning from the things that catch your eye.
-
-Free. Open source. Runs on your machine. Your data stays yours.
+Not a bookmark manager. A rabbit hole companion.
 
 **Maker's comment:**
 
-I built this because I had 10 years of Chrome bookmarks and nothing that helped me make sense of them. Raindrop organizes. Pocket saves. curiosity reads. That's the difference.
+I'm a product marketer. I read a lot — positioning frameworks, competitive analysis, AI research. Over the years I saved thousands of links and had no way to make sense of any of it. curiosity is the tool I wished existed. Now it does.
 
 ---
 
 ## 3. Twitter/X thread
 
 **1:**
-I had 10 years of Chrome bookmarks.
+I wanted to learn about positioning. Found one article. Wanted more.
 
-Thousands of links I'd never look at again. Sound familiar?
+40 tabs later, none of it was saved anywhere useful.
 
-So I built something. It's called curiosity. And it makes the cat.
-
-🧵
+So I built something. It's called curiosity. And it makes the cat. 🧵
 
 **2:**
-Here's the thing about saving links.
+Here's how it works.
 
-You're great at it. You're saving plenty. The problem is you never go back. You never connect the positioning article from March with the design thinking piece from last week.
-
-curiosity does.
+Save a link. curiosity reads the page. Pulls out the key ideas. Summarizes it. Tags it. You didn't do anything. It just reads.
 
 **3:**
-Save a link. Any link.
+Then you hit "go deeper."
 
-curiosity reads the page and gives you back what matters. Summary. Key insights. Topic tags. Who wrote it. Whether it's worth your time.
+curiosity searches for more — different perspectives, alternatives, deeper dives on the same topic. Save the ones worth keeping. One click each.
 
-No tagging. No folders. No organizing. It just reads.
+Your library grows around the things you're actually curious about.
 
 **4:**
-Then it starts connecting things.
+Over time, it starts connecting things.
 
 "This article shares three ideas with something you saved two months ago."
 
@@ -93,19 +79,14 @@ Every morning, it pulls out something you saved weeks ago.
 
 *remember this?*
 
-Spaced repetition for your browsing. Not flashcards. Ideas.
+Not flashcards. Ideas. The ones that actually mattered.
 
 **6:**
-It's free. Open source. Runs on your machine.
-
-Python. SQLite. No cloud. No subscription. No tracking.
+It's free. Open source. Runs on your machine. Python, SQLite, no cloud.
 
 pip install curiosity-kb && curiosity serve
 
-**7:**
 GitHub: https://github.com/k3sava/curiosity
-
-I built this for myself because nothing else did what I wanted. If you're a fellow bookmark hoarder, give it a shot.
 
 curiosity makes the cat. Meow. 🐱
 
@@ -113,32 +94,19 @@ curiosity makes the cat. Meow. 🐱
 
 ## 4. Reddit — /r/selfhosted
 
-**Title:** curiosity: self-hosted tool that reads your bookmarks so you don't have to
+**Title:** curiosity: self-hosted tool for research rabbit holes — save one link, go deeper
 
-I browse a lot. Save a lot. Never go back. Over 10 years I accumulated thousands of links across Chrome, Pocket, Slack, random tabs.
+You find one article. You want the full picture. You want alternatives, counterpoints, deeper dives. You open 40 tabs, bookmark some, close the browser, never go back.
 
-I tried every bookmark manager. They're great at organizing. That was never my problem.
+curiosity is one place for all of that. Save a link. It reads the page, extracts the key ideas, and helps you find more related content. Then it automatically organizes, connects ideas across topics, and resurfaces old insights daily.
 
-My problem was that I had all this saved knowledge and no way to actually learn from it. No connections. No review. No "hey, you saved something about this 3 months ago."
-
-So I built curiosity.
-
-**What it does:** Save a URL (or import your Chrome bookmarks, or upload a PDF). curiosity reads the page, extracts the key ideas, finds connections to your other saves, and resurfaces old insights daily so you actually remember them.
-
-**Stack:** Python, FastAPI, SQLite, FTS5 full-text search. No external services. One Docker image.
+**Stack:** Python, FastAPI, SQLite, FTS5. No external services. Runs on a Pi.
 
 ```
 docker run -p 8080:8080 -v curiosity_data:/data ghcr.io/k3sava/curiosity
 ```
 
-Or pip:
-```
-pip install curiosity-kb && curiosity serve
-```
-
-**Features:** AI enrichment (summary, insights, topics, author detection), daily review, RSS feeds, collections, highlights, automation rules, page archival, Cmd+K command palette, dark mode, MCP server for Claude Code.
-
-**Self-hosted friendly:** SQLite on disk. No Postgres. No Redis. No Meilisearch. No cloud. Runs on a Pi.
+Features: AI enrichment, "go deeper" discovery, daily review, RSS feeds, collections, highlights, automation rules, page archival, ⌘K command palette, dark mode, MCP server for Claude Code.
 
 GitHub: https://github.com/k3sava/curiosity
 
@@ -146,20 +114,20 @@ GitHub: https://github.com/k3sava/curiosity
 
 ## 5. Claude Code community
 
-**Title:** MCP server that turns your bookmarks into a knowledge system
+**Title:** MCP server for research rabbit holes — save a URL, Claude finds the full picture
 
-Built an MCP server that gives Claude a long-term memory for web content. Save URLs, and Claude reads and enriches them. Search across everything. Follow authors. Review old insights.
+Built an MCP server that turns Claude into a research companion. Save a URL, Claude reads and enriches it, then helps you find related content — different perspectives, deeper dives, alternatives.
 
-17 tools. 8 resources. Zero extra API cost — enrichment happens in your existing session.
+17 tools. Zero extra cost — enrichment happens in your session.
 
 ```
 pip install curiosity-kb
 claude mcp add curiosity -- curiosity-mcp
 ```
 
-Then: "Save this URL" → "What are my knowledge gaps?" → "Find me something to read about positioning" → "Show me connections between my recent saves"
+"Save this URL" → "Enrich it" → "Find me more on this topic" → "What connects to my recent saves?"
 
-Also comes with a web UI at localhost:8080 for browsing, reviewing, and discovering.
+Also comes with a web UI at localhost:8080.
 
 GitHub: https://github.com/k3sava/curiosity
 

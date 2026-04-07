@@ -2686,6 +2686,114 @@ Return ONLY valid JSON, no markdown fences."""
         return JSONResponse({"error": f"Enrichment failed: {e}"}, status_code=500)
 
 
+@app.post("/api/discover/{bookmark_id}")
+async def api_discover_related(bookmark_id: str):
+    """Find 3-5 related URLs for a bookmark using web search. No API key needed."""
+    db = get_db()
+    bookmark = db.execute("""
+        SELECT b.title, b.domain, c.summary
+        FROM bookmarks b LEFT JOIN content c ON b.id = c.bookmark_id
+        WHERE b.id = ?
+    """, (bookmark_id,)).fetchone()
+    if not bookmark:
+        db.close()
+        return JSONResponse({"error": "Not found"}, status_code=404)
+
+    # Build a search query from title + summary keywords
+    title = bookmark["title"] or ""
+    summary = bookmark["summary"] or ""
+    # Use title as primary query, trim to key phrase
+    query = title[:80]
+    if not query:
+        query = summary[:80]
+
+    if not query:
+        db.close()
+        return JSONResponse({"results": [], "query": ""})
+
+    # Search using DuckDuckGo (no API key needed)
+    try:
+        resp = httpx.get(
+            "https://html.duckduckgo.com/html/",
+            params={"q": query},
+            headers={"User-Agent": "Mozilla/5.0 curiosity/0.1"},
+            timeout=10,
+            follow_redirects=True,
+        )
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        raw_results = []
+        for link in soup.select(".result__a")[:8]:
+            href = link.get("href", "")
+            link_title = link.get_text(strip=True)
+            if href and link_title:
+                if "uddg=" in href:
+                    from urllib.parse import parse_qs, urlparse as up
+                    parsed = up(href)
+                    qs = parse_qs(parsed.query)
+                    href = qs.get("uddg", [href])[0]
+                raw_results.append({"url": href, "title": link_title})
+    except Exception:
+        raw_results = []
+
+    # Dedup against existing bookmarks
+    existing = set()
+    for row in db.execute("SELECT url FROM bookmarks").fetchall():
+        existing.add(row["url"].rstrip("/").lower())
+
+    results = []
+    for r in raw_results:
+        normalized = r["url"].rstrip("/").lower()
+        if normalized not in existing and bookmark["domain"] not in normalized:
+            results.append(r)
+        if len(results) >= 5:
+            break
+
+    db.close()
+    return JSONResponse({"results": results, "query": query})
+
+
+@app.post("/api/save-discovered")
+async def api_save_discovered(request: Request):
+    """One-click save a discovered URL."""
+    body = await request.json()
+    url = body.get("url", "").strip()
+    title = body.get("title", "").strip()
+    triggered_by = body.get("triggered_by", "")
+    if not url:
+        return JSONResponse({"error": "No URL"}, status_code=400)
+
+    bookmark_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    domain = url.replace("https://", "").replace("http://", "").split("/")[0]
+
+    db = get_db()
+    existing = db.execute("SELECT id FROM bookmarks WHERE url = ?", (url,)).fetchone()
+    if existing:
+        db.close()
+        return JSONResponse({"id": existing["id"], "status": "exists"})
+
+    db.execute(
+        "INSERT INTO bookmarks (id, url, title, domain, source, added_at, status) VALUES (?, ?, ?, ?, 'discovery', ?, 'pending')",
+        (bookmark_id, url, title or url, domain, now),
+    )
+    db.commit()
+
+    # Record the discovery link
+    if triggered_by:
+        try:
+            db.execute(
+                "INSERT INTO discoveries (bookmark_id, triggered_by, search_query, relevance_score, discovered_at) VALUES (?, ?, ?, ?, ?)",
+                (bookmark_id, triggered_by, "", 0.7, now),
+            )
+            db.commit()
+        except Exception:
+            pass
+
+    db.close()
+    return JSONResponse({"id": bookmark_id, "status": "saved"})
+
+
 if __name__ == "__main__":
     print("curiosity — http://localhost:8080")
     uvicorn.run(app, host="127.0.0.1", port=8080)

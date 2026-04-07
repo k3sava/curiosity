@@ -147,6 +147,14 @@
   </div>
   {% endif %}
 
+  {# Go deeper — discover related content #}
+  <div class="item-discover" id="discover-section">
+    <h2 class="item-section-label-warm">go deeper</h2>
+    <p class="discover-hint" id="discover-hint">Find more perspectives, alternatives, and deeper dives on this topic.</p>
+    <button class="btn-secondary" id="discover-btn" data-bookmark-id="{{ item.id }}" style="margin-top: 8px;">Find related →</button>
+    <div id="discover-results" style="display: none; margin-top: 16px;"></div>
+  </div>
+
   {% if more_items %}
   <div class="item-more">
     <h2 class="item-section-label-warm">more in {{ spaces[0].name }}</h2>
@@ -220,6 +228,59 @@ document.getElementById('download-audio-btn')?.addEventListener('click', async f
 });
 
 // --- Enrich button ---
+// --- Go deeper: discover related ---
+document.getElementById('discover-btn')?.addEventListener('click', async function() {
+  var btn = this;
+  var id = btn.dataset.bookmarkId;
+  var results = document.getElementById('discover-results');
+  var hint = document.getElementById('discover-hint');
+  btn.textContent = 'Searching...';
+  btn.disabled = true;
+  try {
+    var resp = await fetch('/api/discover/' + id, {method: 'POST'});
+    var data = await resp.json();
+    if (data.results && data.results.length) {
+      var html = '';
+      data.results.forEach(function(r) {
+        html += '<div class="discover-result">' +
+          '<div class="discover-result-title">' + (r.title || r.url) + '</div>' +
+          '<div class="discover-result-url">' + r.url.substring(0, 60) + '</div>' +
+          '<button class="btn-secondary discover-save" data-url="' + r.url.replace(/"/g, '&quot;') + '" data-title="' + (r.title || '').replace(/"/g, '&quot;') + '" data-triggered="' + id + '" style="margin-top: 6px; height: 28px; font-size: 12px;">Save this</button>' +
+          '</div>';
+      });
+      results.innerHTML = html;
+      results.style.display = 'block';
+      hint.textContent = data.results.length + ' related pieces found. Save the ones worth keeping.';
+      btn.style.display = 'none';
+      // Bind save buttons
+      results.querySelectorAll('.discover-save').forEach(function(saveBtn) {
+        saveBtn.addEventListener('click', async function() {
+          var url = this.dataset.url;
+          var title = this.dataset.title;
+          var triggered = this.dataset.triggered;
+          this.textContent = 'Saving...';
+          this.disabled = true;
+          var saveResp = await fetch('/api/save-discovered', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url, title: title, triggered_by: triggered})
+          });
+          var saveData = await saveResp.json();
+          this.textContent = saveData.status === 'exists' ? 'Already saved' : 'Saved';
+        });
+      });
+    } else {
+      hint.textContent = 'No new results found. Try enriching this bookmark first for better search terms.';
+      btn.textContent = 'Find related →';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    hint.textContent = 'Search failed. Try again later.';
+    btn.textContent = 'Find related →';
+    btn.disabled = false;
+  }
+});
+
 document.getElementById('enrich-btn')?.addEventListener('click', async function() {
   var btn = this;
   var bookmarkId = btn.dataset.bookmarkId;
