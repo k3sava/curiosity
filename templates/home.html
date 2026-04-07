@@ -6,18 +6,18 @@
 
 {% if not stats or stats.total == 0 %}
 <div class="onboarding">
-  <h1 class="onboarding-title">your knowledge starts here.</h1>
+  <h1 class="onboarding-title">Your knowledge starts here.</h1>
   <p class="onboarding-desc">Save a link. curiosity reads it, pulls out the key ideas, finds<br>connections to things you've saved before, and tells you what's missing.</p>
   <div class="onboarding-actions">
     <form class="onboarding-url-form" id="onboarding-url-form">
-      <input type="url" class="onboarding-url-input" id="onboarding-url" placeholder="paste a URL to get started" autocomplete="off">
+      <input type="url" class="onboarding-url-input" id="onboarding-url" placeholder="Paste a URL to get started" autocomplete="off">
       <button type="submit" class="btn-primary">Save</button>
     </form>
     <div class="onboarding-or">or</div>
     <div class="onboarding-links">
-      <a href="/import" class="btn-secondary">import your bookmarks</a>
+      <a href="/import" class="btn-secondary">Import your bookmarks</a>
       <label class="btn-secondary" style="cursor: pointer;">
-        upload a file
+        Upload a file
         <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" id="onboarding-upload" style="display:none">
       </label>
     </div>
@@ -50,7 +50,7 @@
 
 {% if picked %}
 <section class="home-section">
-  <h2 class="section-label-warm">worth reading</h2>
+  <h2 class="section-label-warm">Worth reading</h2>
   <p class="section-hint">High-value items you haven't seen yet.</p>
   <div class="picked-grid">
     {% for b in picked %}
@@ -72,7 +72,7 @@
 
 {% if fresh %}
 <section class="home-section">
-  <h2 class="section-label-warm">recently saved</h2>
+  <h2 class="section-label-warm">Recently saved</h2>
   <div class="fresh-list">
     {% for f in fresh %}
     <a href="/item/{{ f.id }}" class="fresh-item stagger" style="--i: {{ loop.index0 + 4 }}">
@@ -87,7 +87,7 @@
 <div class="home-footer stagger" style="--i: 10">
   {% if spaces %}
   <div class="home-footer-col">
-    <h3 class="section-label-warm">your spaces</h3>
+    <h3 class="section-label-warm">Your spaces</h3>
     {% for s in spaces[:6] %}
     <a href="/space/{{ s.name | urlencode }}" class="footer-link">{{ s.icon }} {{ s.name }} <span class="footer-count">{{ s.count }}</span></a>
     {% endfor %}
@@ -96,7 +96,7 @@
   {% endif %}
   {% if top_domains %}
   <div class="home-footer-col">
-    <h3 class="section-label-warm">where you read</h3>
+    <h3 class="section-label-warm">Where you read</h3>
     {% for d in top_domains %}
     <a href="/library?domain={{ d.domain|urlencode }}" class="footer-link">{{ d.domain }} <span class="footer-count">{{ d.cnt }}</span></a>
     {% endfor %}
@@ -127,12 +127,12 @@
         var data = await resp.json();
         if (data.status === 'exists') {
           input.value = '';
-          input.placeholder = 'already saved. try another...';
+          input.placeholder = 'Already saved. Try another...';
         } else {
           location.reload();
         }
       } catch(err) {
-        input.placeholder = 'something went wrong. try again.';
+        input.placeholder = 'Something went wrong. Try again.';
       }
     });
   }

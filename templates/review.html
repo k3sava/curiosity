@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set active = 'review' %}
 {% set tab = 'today' %}
-{% block title %}review — curiosity{% endblock %}
+{% block title %}Review — curiosity{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -39,11 +39,11 @@
 </div>
 
 <div style="text-align: center; margin-top: 32px">
-  <a href="/review" class="follow-btn" style="font-size: 14px; padding: 10px 24px">shuffle new cards</a>
+  <a href="/review" class="follow-btn" style="font-size: 14px; padding: 10px 24px">Show me more</a>
 </div>
 {% else %}
 <div class="empty-state">
-  <p>Not enough enriched bookmarks for review yet. Keep saving. curiosity learns what you like.</p>
+  <p>Not enough enriched bookmarks for review yet. Keep saving, curiosity learns what you like.</p>
 </div>
 {% endif %}
 {% endblock %}

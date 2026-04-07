@@ -18,7 +18,12 @@
     <div style="font-size:11px;color:var(--text-light)">{{ c.domain_a }}</div>
   </div>
   <div class="connection-arrow">
-    {% if c.connection_type %}{{ c.connection_type }}{% else %}↔{% endif %}
+    {% if c.connection_type == 'same_topic' %}shares topics with
+    {% elif c.connection_type == 'same_author' %}same author as
+    {% elif c.connection_type == 'same_domain' %}same source as
+    {% elif c.connection_type == 'related' %}relates to
+    {% elif c.connection_type %}{{ c.connection_type | replace('_', ' ') }}
+    {% else %}connects to{% endif %}
   </div>
   <div>
     <a href="/item/{{ c.bookmark_b }}">{{ c.title_b or 'Untitled' }}</a>

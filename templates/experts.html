@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set active = 'discover' %}
 {% set tab = 'experts' %}
-{% block title %}people — curiosity{% endblock %}
+{% block title %}People — curiosity{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -11,6 +11,25 @@
 
 {% include '_discover_tabs.html' %}
 
+{% if experts|length < 6 %}
+<div class="expert-list-layout">
+  {% for e in experts %}
+  <a href="/expert/{{ e.id }}" class="expert-list-item stagger" style="--i: {{ loop.index0 }}">
+    <div style="flex: 1;">
+      <div class="card-title">{{ e.name }}{% if e.followed %} <span style="font-size: 11px; color: var(--accent); font-weight: 400;">following</span>{% endif %}</div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+        <span class="card-meta" style="margin-bottom: 0;">{{ e.item_count }} item{{ 's' if e.item_count != 1 else '' }}</span>
+        {% if e.expertise %}
+        {% for tag in e.expertise | parse_json %}
+        <span class="tag-inline">{{ tag }}</span>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
 <div class="card-grid">
   {% for e in experts %}
   <a href="/expert/{{ e.id }}" class="card expert-card stagger" style="--i: {{ loop.index0 }}">
@@ -26,10 +45,11 @@
   </a>
   {% endfor %}
 </div>
+{% endif %}
 
 {% if not experts %}
 <div class="empty-state">
-  <p>curiosity identifies authors as it reads. Follow the ones you want to track.</p>
+  <p>Curiosity identifies authors as it reads. Follow the ones you want to track.</p>
 </div>
 {% endif %}
 {% endblock %}

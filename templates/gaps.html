@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set active = 'discover' %}
 {% set tab = 'explore' %}
-{% block title %}discover — curiosity{% endblock %}
+{% block title %}Discover — curiosity{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -31,14 +31,14 @@
 <div class="discover-list">
   {% for g in needs[:6] %}
   <div class="discover-card stagger" style="--i: {{ loop.index0 }}">
-    <div class="discover-name">{{ g.name }}</div>
+    <div class="discover-name">{{ g.name }} <span style="font-weight: 400; font-size: 13px; color: var(--ink-3);">{{ g.count }}</span></div>
     <div class="discover-detail">
-      {{ g.count }} source{{ 's' if g.count != 1 else '' }} saved.{% if g.search_queries %} Try "{{ g.search_queries[0] }}"{% if g.search_queries|length > 1 %} or "{{ g.search_queries[1] }}"{% endif %}.{% endif %}
+      {% if g.search_queries %}Try "{{ g.search_queries[0] }}"{% if g.search_queries|length > 1 %} or "{{ g.search_queries[1] }}"{% endif %}{% else %}{{ g.count }} source{{ 's' if g.count != 1 else '' }} saved{% endif %}
     </div>
     {% if g.search_queries %}
     <div class="discover-actions">
       {% for q in g.search_queries[:2] %}
-      <a href="/library?q={{ q|urlencode }}" class="discover-search-link">search for this →</a>
+      <a href="/library?q={{ q|urlencode }}" class="discover-search-link">Search →</a>
       {% endfor %}
     </div>
     {% endif %}
@@ -63,7 +63,7 @@
 
 {% if strong %}
 <section class="home-section" style="margin-top: 32px;">
-  <h2 class="section-label-warm">your strong areas</h2>
+  <h2 class="section-label-warm">Your strong areas</h2>
   <div class="strong-areas">
     {% for g in strong %}
     <span class="strong-area">{{ g.name }} <span class="footer-count">{{ g.count }}</span></span>

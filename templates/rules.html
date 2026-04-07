@@ -51,19 +51,9 @@
     {% set acts = r.actions|parse_json %}
 
     {% if conds %}
-    <div style="margin-top: 10px; font-size: 12px; color: var(--ink-3);">
-      <strong>If:</strong>
-      {% for c in conds %}
-        {{ c.field }} {{ c.op }} "{{ c.value }}"{% if not loop.last %} AND {% endif %}
-      {% endfor %}
-    </div>
-    {% endif %}
-    {% if acts %}
-    <div style="margin-top: 4px; font-size: 12px; color: var(--ink-3);">
-      <strong>Then:</strong>
-      {% for a in acts %}
-        {{ a.type }} → "{{ a.value }}"{% if not loop.last %}, {% endif %}
-      {% endfor %}
+    <div style="margin-top: 10px; font-size: 13px; color: var(--ink-2); line-height: 1.6;">
+      When {% for c in conds %}{{ c.field }} {{ c.op }} <strong>"{{ c.value }}"</strong>{% if not loop.last %} and {% endif %}{% endfor %},
+      {% if acts %}then {% for a in acts %}{{ a.type | replace('_', ' ') }} <strong>"{{ a.value }}"</strong>{% if not loop.last %} and {% endif %}{% endfor %}{% endif %}
     </div>
     {% endif %}
 

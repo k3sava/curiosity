@@ -12,7 +12,7 @@
 {% include '_library_tabs.html' %}
 
 <div style="margin-bottom: 24px">
-  <button class="follow-btn" id="new-collection-btn" style="font-size: 13px">+ New collection</button>
+  <button class="collections-cta" id="new-collection-btn">+ New collection</button>
 </div>
 
 <div id="new-collection-form" style="display: none; margin-bottom: 24px">
@@ -26,7 +26,7 @@
 {% if collections %}
 <div class="card-grid card-grid-lg">
   {% for c in collections %}
-  <a href="/collection/{{ c.id }}" class="card stagger" style="--i: {{ loop.index0 }}; border-left: 4px solid {{ c.color }}">
+  <a href="/collection/{{ c.id }}" class="card stagger" style="--i: {{ loop.index0 }}">
     <div class="card-title">{{ c.name }}</div>
     {% if c.description %}
     <div class="card-summary">{{ c.description }}</div>

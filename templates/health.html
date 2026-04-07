@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% set active = '' %}
-{% block title %}Link Health — curiosity{% endblock %}
+{% block title %}Broken Links — curiosity{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title">Link Health</h1>
+  <h1 class="page-title">Broken links</h1>
   <p class="page-subtitle">{{ total_checked }} checked, {{ total_broken }} broken</p>
 </div>
 
 <div style="margin-bottom: 24px;">
-  <button id="check-links-btn" class="action-btn">Check Links (50 oldest)</button>
+  <button id="check-links-btn" class="btn-primary">Check links</button>
   <span id="check-status" style="margin-left: 12px; color: var(--text-secondary); font-size: 13px;"></span>
 </div>
 
@@ -31,7 +31,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <p>All clear. Click "Check links" to scan for broken URLs.</p>
+  <p>All clear. Click "Check links" above to scan for broken URLs.</p>
 </div>
 {% endif %}
 {% endblock %}
@@ -55,7 +55,7 @@ document.getElementById('check-links-btn').addEventListener('click', async funct
     status.textContent = 'Error running check.';
   } finally {
     this.disabled = false;
-    this.textContent = 'Check Links (50 oldest)';
+    this.textContent = 'Check links';
   }
 });
 </script>

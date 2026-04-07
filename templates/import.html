@@ -9,21 +9,21 @@
 </div>
 
 <div class="card-grid" style="grid-template-columns: 1fr 1fr; max-width: 700px;">
-  <div class="card">
+  <div class="card import-card">
     <div class="card-title">Pocket</div>
     <div class="card-summary" style="margin-top: 6px;">Import from a Pocket HTML export file. Go to getpocket.com/export to download yours.</div>
-    <label class="upload-label action-btn" style="cursor: pointer; margin-top: 12px; display: inline-block;">
-      Upload Pocket export
+    <label class="upload-label btn-primary" style="cursor: pointer; margin-top: 16px; display: inline-flex;">
+      Upload export
       <input type="file" accept=".html,.htm" id="pocket-file" style="display: none;">
     </label>
     <div id="pocket-result" style="margin-top: 8px; font-size: 12px; color: var(--ink-3);"></div>
   </div>
 
-  <div class="card">
+  <div class="card import-card">
     <div class="card-title">Omnivore</div>
     <div class="card-summary" style="margin-top: 6px;">Import from an Omnivore JSON export. Export from Omnivore settings before the service shuts down.</div>
-    <label class="upload-label action-btn" style="cursor: pointer; margin-top: 12px; display: inline-block;">
-      Upload Omnivore export
+    <label class="upload-label btn-primary" style="cursor: pointer; margin-top: 16px; display: inline-flex;">
+      Upload export
       <input type="file" accept=".json" id="omnivore-file" style="display: none;">
     </label>
     <div id="omnivore-result" style="margin-top: 8px; font-size: 12px; color: var(--ink-3);"></div>

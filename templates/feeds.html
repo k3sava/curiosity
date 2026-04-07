@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set active = 'discover' %}
 {% set tab = 'feeds' %}
-{% block title %}sources — curiosity{% endblock %}
+{% block title %}Sources — curiosity{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -11,9 +11,9 @@
 
 {% include '_discover_tabs.html' %}
 
-<div class="feed-add-form" style="margin-bottom: 32px; display: flex; gap: 8px;">
-  <input type="url" id="feed-url" class="search-bar" placeholder="Paste an RSS or Atom feed URL..." style="flex: 1; max-width: 500px;">
-  <button id="add-feed-btn" class="action-btn">Add feed</button>
+<div class="feed-add-form" style="margin-bottom: 32px; display: flex; gap: 8px; align-items: center;">
+  <input type="url" id="feed-url" class="search-bar" placeholder="Paste an RSS or Atom feed URL..." style="flex: 1; max-width: 500px; height: 36px;">
+  <button id="add-feed-btn" class="btn-primary" style="height: 36px; font-size: 13px;">Add feed</button>
 </div>
 
 <div class="card-grid">

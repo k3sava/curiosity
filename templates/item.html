@@ -33,7 +33,7 @@
 
     {# Overflow menu for secondary actions #}
     <div class="overflow-menu" style="margin-left: auto;">
-      <button class="overflow-trigger" id="overflow-btn">···</button>
+      <button class="overflow-trigger" id="overflow-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
       <div class="overflow-dropdown" id="overflow-dropdown">
         {# Read status #}
         <div style="padding: 6px 14px; font-size: 11px; color: var(--ink-4); font-weight: 500;">Status</div>
@@ -94,7 +94,7 @@
 
   {% if insights %}
   <div class="item-takeaways">
-    <h2 class="item-section-label-warm">key insights</h2>
+    <h2 class="item-section-label-warm">Key insights</h2>
     <ul>
       {% for insight in insights %}
       <li>{{ insight }}</li>
@@ -106,7 +106,7 @@
   {# Highlights #}
   {% if highlights %}
   <div class="highlights-section">
-    <h2 class="item-section-label-warm">highlights</h2>
+    <h2 class="item-section-label-warm">Highlights</h2>
     <div id="highlights-list">
       {% for h in highlights %}
       <div class="highlight-item" data-id="{{ h.id }}">
@@ -124,7 +124,7 @@
   </div>
   {% endif %}
   <div class="highlights-section" id="new-highlights-section" style="{% if highlights %}display:none{% endif %}">
-    <h2 class="item-section-label-warm">highlights</h2>
+    <h2 class="item-section-label-warm">Highlights</h2>
     <div id="new-highlights-list"></div>
   </div>
 
@@ -149,7 +149,7 @@
 
   {# Go deeper — discover related content #}
   <div class="item-discover" id="discover-section">
-    <h2 class="item-section-label-warm">go deeper</h2>
+    <h2 class="item-section-label-warm">Go deeper</h2>
     <p class="discover-hint" id="discover-hint">Find more perspectives, alternatives, and deeper dives on this topic.</p>
     <button class="btn-secondary" id="discover-btn" data-bookmark-id="{{ item.id }}" style="margin-top: 8px;">Find related →</button>
     <div id="discover-results" style="display: none; margin-top: 16px;"></div>
@@ -157,7 +157,7 @@
 
   {% if more_items %}
   <div class="item-more">
-    <h2 class="item-section-label-warm">more in {{ spaces[0].name }}</h2>
+    <h2 class="item-section-label-warm">More in {{ spaces[0].name }}</h2>
     {% for m in more_items %}
     <a href="/item/{{ m.id }}" class="more-link">
       <span>{{ m.title[:70] }}{% if m.title|length > 70 %}…{% endif %}</span>

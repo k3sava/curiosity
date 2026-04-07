@@ -39,15 +39,18 @@
 </div>
 
 {% if experts %}
-<section class="space-experts">
-  <h2 class="section-label">experts in this space</h2>
-  {% for e in experts %}
-  <a href="/expert/{{ e.id }}" class="expert-inline">
-    <span class="expert-name">{{ e.name }}</span>
-    {% if e.expertise %}<span class="expert-field">{{ e.expertise }}</span>{% endif %}
-  </a>
-  {% endfor %}
-</section>
+<div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line-soft);">
+  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+    <span class="section-label" style="margin-bottom: 0;">Experts</span>
+  </div>
+  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+    {% for e in experts %}
+    <a href="/expert/{{ e.id }}" class="space-pill" style="padding: 4px 12px;">
+      {{ e.name }}{% if e.expertise %} <span style="font-size: 11px; color: var(--ink-4);">{{ e.expertise }}</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</div>
 {% endif %}
 
 {% if not items %}
