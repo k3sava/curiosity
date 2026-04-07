@@ -2570,7 +2570,7 @@ async def api_enrich_bookmark(bookmark_id: str):
     import os
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        return JSONResponse({"error": "Set ANTHROPIC_API_KEY environment variable to enable enrichment."}, status_code=400)
+        return JSONResponse({"error": "To enrich bookmarks, run: export ANTHROPIC_API_KEY=sk-ant-... then restart curiosity. Get a key at console.anthropic.com."}, status_code=400)
 
     db = get_db()
     bookmark = db.execute("""
@@ -2831,9 +2831,7 @@ if __name__ == "__main__":
     import sys as _sys
     _host = "127.0.0.1"
     _port = 8080
-    if "--host" in _sys.argv:
-        _host = _sys.argv[_sys.argv.index("--host") + 1]
-    if "--port" in _sys.argv:
-        _port = int(_sys.argv[_sys.argv.index("--port") + 1])
+    if "--host" in _sys.argv: _host = _sys.argv[_sys.argv.index("--host") + 1]
+    if "--port" in _sys.argv: _port = int(_sys.argv[_sys.argv.index("--port") + 1])
     print(f"curiosity — http://{_host}:{_port}")
     uvicorn.run(app, host=_host, port=_port)

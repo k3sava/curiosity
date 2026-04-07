@@ -293,8 +293,12 @@ document.getElementById('enrich-btn')?.addEventListener('click', async function(
       btn.textContent = 'Done!';
       setTimeout(function() { location.reload(); }, 800);
     } else {
-      btn.textContent = data.error || 'Failed';
+      btn.textContent = 'Enrich with AI';
       btn.disabled = false;
+      var msg = document.createElement('p');
+      msg.style.cssText = 'font-size:13px;color:var(--ink-3);margin-top:8px;max-width:480px;';
+      msg.textContent = data.error || 'Enrichment failed.';
+      btn.parentNode.insertBefore(msg, btn.nextSibling);
     }
   } catch(e) {
     btn.textContent = 'Error';
