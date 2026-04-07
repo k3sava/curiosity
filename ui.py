@@ -516,7 +516,7 @@ async def library(
 ):
     db = get_db()
     block_sql = blocked_filter_sql()
-    conditions = [f"b.status = 'enriched'", block_sql]
+    conditions = [f"b.status IN ('enriched', 'fetched', 'pending')", block_sql]
     params = []
 
     if space and space in SPACES:
@@ -1109,15 +1109,47 @@ async def api_ingest_url(request: Request):
         db.close()
         return JSONResponse({"id": existing["id"], "status": "exists"})
 
-    db.execute(
-        "INSERT INTO bookmarks (id, url, title, domain, source, added_at, status) VALUES (?, ?, ?, ?, 'web_ui', ?, 'pending')",
-        (bookmark_id, url, url, domain, now),
-    )
+    # Try to fetch title immediately
+    title = url
+    try:
+        resp = httpx.get(url, timeout=8, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0 curiosity/0.1"})
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        if soup.title and soup.title.string:
+            title = soup.title.string.strip()[:200]
+        # Store raw text for enrichment
+        for tag in soup(["script", "style", "nav", "footer", "header"]):
+            tag.decompose()
+        raw_text = (soup.find("article") or soup.find("main") or soup.find("body") or soup).get_text(separator="\n", strip=True)[:8000]
+        db.execute(
+            "INSERT INTO bookmarks (id, url, title, domain, source, added_at, status) VALUES (?, ?, ?, ?, 'web_ui', ?, 'fetched')",
+            (bookmark_id, url, title, domain, now),
+        )
+        db.execute(
+            "INSERT OR REPLACE INTO content (bookmark_id, raw_text, fetched_at) VALUES (?, ?, ?)",
+            (bookmark_id, raw_text, now),
+        )
+    except Exception:
+        db.execute(
+            "INSERT INTO bookmarks (id, url, title, domain, source, added_at, status) VALUES (?, ?, ?, ?, 'web_ui', ?, 'pending')",
+            (bookmark_id, url, title, domain, now),
+        )
     db.commit()
     run_rules_on_bookmark(db, bookmark_id)
     is_yt = _is_youtube(url)
     db.close()
-    return JSONResponse({"id": bookmark_id, "status": "pending", "is_youtube": is_yt})
+
+    # Auto-enrich in background if API key is set
+    import os
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        async def _bg_enrich():
+            try:
+                await api_enrich_bookmark(bookmark_id)
+            except Exception:
+                pass
+        asyncio.ensure_future(_bg_enrich())
+
+    return JSONResponse({"id": bookmark_id, "status": "saved", "title": title, "is_youtube": is_yt})
 
 
 @app.post("/api/chat")
