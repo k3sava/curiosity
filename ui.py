@@ -37,6 +37,8 @@ ARTEMIS_DB = Path(__file__).parent.parent.parent / "data" / "artemis.db"
 app = FastAPI(title="curiosity")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+templates.env.auto_reload = True
+templates.env.cache = None
 
 
 # --- Spaces: curated knowledge areas ---
