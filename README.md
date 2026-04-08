@@ -14,6 +14,16 @@ Save a link. Curiosity reads it, pulls out the key ideas, and finds more — dif
 
 One place for every rabbit hole. That's it.
 
+![Home - save links, see recommendations](docs/screenshots/home.png)
+
+![Library - everything you've saved, organized automatically](docs/screenshots/library.png)
+
+![Review - resurface insights from your past reading](docs/screenshots/review.png)
+
+![Discover - find gaps in your knowledge and go deeper](docs/screenshots/discover.png)
+
+![Item - key insights, highlights, and related content](docs/screenshots/item.png)
+
 ## How it works
 
 Save a link. Any link.
