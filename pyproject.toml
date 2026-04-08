@@ -1,11 +1,11 @@
 [project]
-name = "artemis-curiosity"
+name = "curiosity-kb"
 version = "0.1.0"
-description = "Artemis learning management system — MCP server for autonomous knowledge discovery"
+description = "Personal knowledge system — save links, connect ideas, remember what matters"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
-    { name = "Kesava", email = "k3sava@gmail.com" },
+    { name = "Kesava" },
 ]
 
 dependencies = [

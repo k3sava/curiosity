@@ -1,10 +1,10 @@
 #!/bin/bash
-# curiosity (Artemis LMS) — one-time setup script
-# Run from: /Users/kesava/Projects/artemis/mcp/curiosity
+# curiosity — one-time setup script
+# Run from the curiosity repo root
 # Requires: uv (installed at ~/.local/bin/uv)
 set -e
 
-CURIOSITY_DIR="/Users/kesava/Projects/artemis/mcp/curiosity"
+CURIOSITY_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="$CURIOSITY_DIR/.venv"
 UV="$HOME/.local/bin/uv"
 
@@ -33,8 +33,8 @@ claude mcp list 2>/dev/null | grep -q curiosity && echo "  MCP server registered
 echo ""
 echo "=== Done ==="
 echo ""
-echo "curiosity is now part of Artemis. Zero extra API cost."
-echo "Open a new Claude Code session in artemis and try:"
+echo "curiosity is ready. Zero extra API cost."
+echo "Open a new Claude Code session and try:"
 echo '  /read https://example.com/article'
 echo '  "what are my knowledge gaps?"'
 echo '  /digest'
