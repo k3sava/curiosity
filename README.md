@@ -1,18 +1,16 @@
-# curiosity
+# Curiosity
 
-*makes the cat. meow.*
+*...makes the cat meow.*
 
-I browse a lot. Articles, repos, threads, talks, PDFs. I save them everywhere — Chrome bookmarks, Pocket, Slack, tabs I swear I'll get back to. I never do.
-
-Over 10 years I built up thousands of saved links. A personal internet I'd never revisit. Sound familiar?
+I browse a lot. Articles, repos, threads, talks, PDFs. I save them everywhere — Chrome bookmarks, Pocket, Slack, tabs I swear I'll get back to. I never do. Over 10+ years I built up thousands of saved links. A personal internet I'd never revisit. Sound familiar?
 
 I tried Raindrop. Pocket. Hoarder. They organize your links. That was never my problem. My problem was that I had no system. No way to make sense of what I'd collected. No way to connect ideas across topics. No way to remember the good stuff before it faded into the pile.
 
-So I built curiosity.
+So I built Curiosity.
 
 ## What is it
 
-One place for everything you find on the web. Save it. curiosity reads it, pulls out the ideas worth keeping, connects it to what you already know, and makes sure you don't forget the important parts.
+One place for everything you find on the web. Save it. Curiosity reads it, pulls out the ideas worth keeping, connects it to what you already know, and makes sure you don't forget the important parts.
 
 That's it. That's the whole thing.
 
@@ -35,9 +33,9 @@ DISCOVER
 
 Save a link. Any link.
 
-curiosity fetches the page, reads the whole thing, and gives you back what matters — a summary, the key insights, topic tags, who wrote it, and whether it's worth your time. No tagging. No folders. No organizing. It just reads.
+Curiosity fetches the page, reads the whole thing, and gives you back what matters — a summary, the key insights, topic tags, who wrote it, and whether it's worth your time. No tagging. No folders. No organizing. It just reads.
 
-Then it starts connecting things. That positioning article from March? It shares three ideas with a design thinking piece you saved last week. You didn't see the connection. curiosity did.
+Then it starts connecting things. That positioning article from March? It shares three ideas with a design thinking piece you saved last week. You didn't see the connection. Curiosity did.
 
 And every morning, it pulls out something you saved weeks ago and says: *remember this?*
 
@@ -68,19 +66,17 @@ docker run -p 8080:8080 -v curiosity_data:/data ghcr.io/k3sava/curiosity
 
 ## The AI part
 
-curiosity uses AI to read your bookmarks. Two ways to do it:
+Curiosity uses AI to read your bookmarks. Two ways to do it:
 
 **Free way:** It runs as an MCP server inside Claude Code. Claude reads the page in your session. No API calls. No cost. This is how I use it.
 
-**Standalone way:** Set your `ANTHROPIC_API_KEY` and curiosity calls the API directly. Uses Haiku. Costs about a tenth of a penny per bookmark.
+**Standalone way:** Set your `ANTHROPIC_API_KEY` and Curiosity calls the API directly. Uses Haiku. Costs about a tenth of a penny per bookmark.
 
 Either way, the AI is invisible. You save a link. Insights appear. You don't think about models or tokens or prompts. It just works.
 
-## Why "curiosity"
+## Why "Curiosity"
 
-Because that's what it's for. Following your curiosity. Saving the things that catch your eye. And having something that helps you actually learn from them instead of letting them rot in a bookmark folder called "Read Later."
-
-Also: curiosity makes the cat. Meow.
+Because that's what it's for. Following your Curiosity. Saving the things that catch your eye. And having something that helps you actually learn from them instead of letting them rot in a bookmark folder called "Read Later." Because curiosity makes the cat meow.
 
 ## Tech
 
