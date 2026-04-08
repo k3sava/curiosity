@@ -1,16 +1,16 @@
-# curiosity
+# Curiosity
 
-*makes the cat. meow.*
+*is what makes the cat meow...*
 
 I wanted to learn about positioning. I found one good article. Then I wanted more — different angles, counterpoints, frameworks I hadn't seen. I ended up with 40 tabs open and no system for any of it.
 
 That's the pattern. You find one thing. You want the full picture. You go down the rabbit hole. And everything you find lives in a different tab, a different bookmark folder, a different app. None of it connects. None of it sticks.
 
-So I built curiosity.
+So I built Curiosity.
 
 ## What is it
 
-Save a link. curiosity reads it, pulls out the key ideas, and finds more — different perspectives, deeper dives, related work you wouldn't have found on your own. Then it quietly organizes everything, connects ideas across topics, and makes sure you don't forget the important parts.
+Save a link. Curiosity reads it, pulls out the key ideas, and finds more — different perspectives, deeper dives, related work you wouldn't have found on your own. Then it quietly organizes everything, connects ideas across topics, and makes sure you don't forget the important parts.
 
 One place for every rabbit hole. That's it.
 
@@ -18,11 +18,11 @@ One place for every rabbit hole. That's it.
 
 Save a link. Any link.
 
-curiosity reads the whole page and gives you back what matters — a summary, the key insights, topic tags, who wrote it, and whether it's worth your time. No manual tagging. No folders. It just reads.
+Curiosity reads the whole page and gives you back what matters: a summary, the key insights, topic tags, who wrote it, and whether it's worth your time. No manual tagging. No folders. It just reads.
 
-Then you hit "go deeper." curiosity searches the web for related pieces — alternatives, counterpoints, deeper dives on the same topic. Save the ones worth keeping with one click. Your library grows around the things you're actually curious about.
+Then you hit "go deeper" and Curiosity searches the web for related pieces: alternatives, counterpoints, deeper dives on the same topic. Save the ones worth keeping with one click. Your library grows around the things you're actually curious about.
 
-Over time, it starts connecting things. That positioning article from March? It shares three ideas with a design thinking piece you saved last week. You didn't see the connection. curiosity did.
+Over time, it starts connecting things. That positioning article from March? It shares three ideas with a design thinking piece you saved last week. You didn't see the connection. Curiosity did.
 
 And every morning, it pulls out something you saved weeks ago and says: *remember this?*
 
@@ -45,7 +45,7 @@ docker run -p 8080:8080 -v curiosity_data:/data ghcr.io/k3sava/curiosity
 
 **Go deeper.** Save one link on a topic. Find 5 more perspectives you wouldn't have searched for. Save the good ones. Follow the rabbit hole.
 
-**Let it learn.** Import your Chrome bookmarks. Subscribe to RSS feeds. Upload PDFs and images. curiosity reads everything and organizes it automatically. No tagging, no folders, no maintenance.
+**Let it learn.** Import your Chrome bookmarks. Subscribe to RSS feeds. Upload PDFs and images. Curiosity reads everything and organizes it automatically. No tagging, no folders, no maintenance.
 
 **Remember what matters.** Daily review cards resurface old insights. Connections show how ideas link across topics. Highlights save the sentences worth keeping.
 
@@ -53,7 +53,7 @@ docker run -p 8080:8080 -v curiosity_data:/data ghcr.io/k3sava/curiosity
 
 ## The AI part
 
-curiosity uses AI to read your bookmarks. It tries three providers in order — you only need one:
+Curiosity uses AI to read your bookmarks. It tries three providers in order, though you only need one:
 
 **Ollama (free, local):** Install [Ollama](https://ollama.com), pull a model, done. No API key, no cloud, no cost. This is the default.
 
@@ -76,13 +76,11 @@ export ANTHROPIC_API_KEY=sk-ant-...
 curiosity serve
 ```
 
-**Without any AI:** The web UI works fine. You can save, search, organize, and browse. AI adds the automatic summaries, insights, and tagging — but it's not required.
+**Without any AI:** The web UI works fine. You can save, search, organize, and browse. AI adds the automatic summaries, insights, and tagging, but it's not required.
 
-## Why "curiosity"
+## Why "Curiosity"
 
-Because that's what it's for. You found something interesting. You want to learn more. curiosity helps you follow that thread — and makes sure you actually retain what you find along the way.
-
-Also: curiosity makes the cat. Meow.
+Because that's what it's for. You found something interesting. You want to learn more. Curiosity helps you follow that thread, and makes sure you actually retain what you find along the way.
 
 ## Tech
 
@@ -90,7 +88,7 @@ Python. FastAPI. SQLite. Jinja2 templates. No React. No Electron. No build step.
 
 ## Contributing
 
-This started as a personal tool and still feels like one. If you want to help, open an issue first. I have opinions about the design.
+This started as a personal tool and still feels like one. If you want to help, open an issue first. Or simply fork this repo and use Claude Code to extend it to do what you need.
 
 ## License
 
