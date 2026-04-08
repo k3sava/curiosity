@@ -94,9 +94,13 @@
         {% if b.learning_value == 'high' %}<span class="value-dot value-dot-high" title="high value"></span>
         {% elif b.learning_value == 'medium' %}<span class="value-dot value-dot-medium" title="medium value"></span>{% endif %}
         {% if b.link_status and b.link_status != 'ok' %}<span class="tag-inline" style="background: var(--signal-wash); color: var(--signal); font-size: 10px;">{{ b.link_status }}</span>{% endif %}
+        {% if b.enrich_status == 'pending' %}<span class="status-badge status-badge-pending">pending</span>
+        {% elif b.enrich_status == 'fetched' %}<span class="status-badge status-badge-fetched">saved</span>{% endif %}
       </div>
       {% if b.summary %}
       <div class="card-summary card-summary-tight">{{ b.summary[:120] }}{% if b.summary|length > 120 %}...{% endif %}</div>
+      {% elif b.enrich_status != 'enriched' %}
+      <div class="card-summary card-summary-tight" style="color: var(--ink-4); font-style: italic;">Waiting for enrichment</div>
       {% endif %}
     </a>
   </div>
@@ -113,6 +117,8 @@
       <span class="list-meta">{{ b.domain }}</span>
       <span class="list-meta">{{ b.added_at|timeago }}</span>
       {% if b.learning_value == 'high' %}<span class="value-dot value-dot-high" title="high value"></span>{% endif %}
+      {% if b.enrich_status == 'pending' %}<span class="status-badge status-badge-pending">pending</span>
+      {% elif b.enrich_status == 'fetched' %}<span class="status-badge status-badge-fetched">saved</span>{% endif %}
       {% if b.summary %}<span class="list-summary">{{ b.summary[:80] }}{% if b.summary|length > 80 %}...{% endif %}</span>{% endif %}
     </a>
   </div>
@@ -192,6 +198,8 @@ async function bulkAddToCollection() {
 async function bulkReEnrich() {
   var ids = getSelectedIds();
   if (!ids.length) return;
+  var countEl = document.getElementById('bulk-count');
+  countEl.innerHTML = '<span class="enriching-spinner"></span>Re-enriching ' + ids.length + ' items...';
   var resp = await fetch('/api/bulk/re-enrich', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({bookmark_ids: ids})
@@ -200,6 +208,8 @@ async function bulkReEnrich() {
     var data = await resp.json();
     showBulkToast('Queued ' + data.count + ' items for re-enrichment');
     toggleBulkMode();
+  } else {
+    countEl.textContent = ids.length + ' selected';
   }
 }
 

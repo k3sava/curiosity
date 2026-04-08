@@ -15,9 +15,30 @@
     overlay.classList.add('open');
     input.value = '';
     input.focus();
-    results.innerHTML = commandsHTML;
     selectedIndex = -1;
-    bindActions();
+    // Show recent saves when opened with no query
+    fetch('/api/search?q=&recent=5')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (input.value.trim()) return; // user already typed
+        var html = '';
+        if (data.bookmarks && data.bookmarks.length) {
+          html += '<div class="cmd-k-section"><div class="cmd-k-section-label">Recent</div>';
+          data.bookmarks.slice(0, 5).forEach(function(b) {
+            html += '<a href="/item/' + b.id + '" class="cmd-k-item">' +
+              '<span class="cmd-k-item-title">' + esc(b.title || 'Untitled') + '</span>' +
+              '<span class="cmd-k-item-meta">' + esc(b.domain || '') + '</span></a>';
+          });
+          html += '</div>';
+        }
+        html += commandsHTML;
+        results.innerHTML = html;
+        bindActions();
+      })
+      .catch(function() {
+        results.innerHTML = commandsHTML;
+        bindActions();
+      });
   }
 
   function close() {
@@ -112,6 +133,9 @@
     }
 
     debounceTimer = setTimeout(function() {
+      results.innerHTML = '<div class="cmd-k-section"><div class="cmd-k-section-label">Searching...</div>' +
+        '<div style="padding: 8px 16px;"><div class="skeleton-line" style="width:70%;margin-bottom:10px;"></div>' +
+        '<div class="skeleton-line" style="width:50%;"></div></div></div>';
       fetch('/api/search?q=' + encodeURIComponent(q))
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -163,10 +187,14 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: url })
-          }).then(function() {
-            input.value = '';
-            input.placeholder = 'Saved! Search for something else...';
-            setTimeout(function() { input.placeholder = 'save a link or search...'; }, 2000);
+          }).then(function(r) { return r.json(); })
+          .then(function(data) {
+            close();
+            var t = document.createElement('div');
+            t.className = 'toast';
+            t.textContent = data.status === 'exists' ? 'Already saved' : 'Saved: ' + (data.title || url).substring(0, 60);
+            document.body.appendChild(t);
+            setTimeout(function() { t.remove(); }, 3000);
           });
         } else if (action === 'toggle-theme') {
           e.preventDefault();

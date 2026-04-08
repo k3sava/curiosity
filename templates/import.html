@@ -29,10 +29,56 @@
     <div id="omnivore-result" style="margin-top: 8px; font-size: 12px; color: var(--ink-3);"></div>
   </div>
 </div>
+
+<div id="import-progress" style="display: none; max-width: 700px; margin: 24px auto 0; text-align: center;">
+  <p id="progress-label" style="font-size: 14px; color: var(--ink-2); margin-bottom: 8px;"></p>
+  <div style="background: var(--surface-sunken); border-radius: var(--r-md); height: 8px; overflow: hidden;">
+    <div id="progress-bar" style="height: 100%; width: 0%; background: var(--accent); border-radius: var(--r-md); transition: width 0.4s ease;"></div>
+  </div>
+  <div id="import-skeleton-grid" style="display: none; margin-top: 24px;">
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+      <div class="skeleton-card"><div class="skeleton-title"></div><div class="skeleton-line"></div><div class="skeleton-line" style="width: 60%;"></div></div>
+      <div class="skeleton-card"><div class="skeleton-title"></div><div class="skeleton-line"></div><div class="skeleton-line" style="width: 60%;"></div></div>
+      <div class="skeleton-card"><div class="skeleton-title"></div><div class="skeleton-line"></div><div class="skeleton-line" style="width: 60%;"></div></div>
+    </div>
+  </div>
+  <a id="progress-done-link" href="/library" style="display: none; margin-top: 12px; font-size: 13px; color: var(--accent);">Go to Library &rarr;</a>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+var _importedCount = 0;
+var _pollTimer = null;
+
+function startEnrichPolling(importedCount) {
+  _importedCount = importedCount;
+  var progressEl = document.getElementById('import-progress');
+  var label = document.getElementById('progress-label');
+  var bar = document.getElementById('progress-bar');
+  var doneLink = document.getElementById('progress-done-link');
+  progressEl.style.display = 'block';
+  document.getElementById('import-skeleton-grid').style.display = 'block';
+  label.textContent = 'Imported ' + importedCount + ' bookmarks. Enriching...';
+
+  _pollTimer = setInterval(async function() {
+    try {
+      var resp = await fetch('/api/import/status');
+      var data = await resp.json();
+      var pct = data.total > 0 ? Math.round(data.enriched / data.total * 100) : 0;
+      bar.style.width = pct + '%';
+      label.textContent = 'Imported ' + importedCount + ' bookmarks. Enriching... (' + data.enriched + '/' + data.total + ')';
+      if (data.pending === 0) {
+        clearInterval(_pollTimer);
+        label.textContent = 'Done! ' + data.enriched + ' of ' + data.total + ' enriched.';
+        bar.style.width = '100%';
+        document.getElementById('import-skeleton-grid').style.display = 'none';
+        doneLink.style.display = 'inline-block';
+      }
+    } catch(e) {}
+  }, 3000);
+}
+
 async function uploadImport(inputId, endpoint, resultId) {
   var input = document.getElementById(inputId);
   var resultEl = document.getElementById(resultId);
@@ -47,6 +93,9 @@ async function uploadImport(inputId, endpoint, resultId) {
       if (resp.ok) {
         resultEl.textContent = data.imported + ' imported, ' + data.skipped + ' skipped (duplicates)';
         resultEl.style.color = 'var(--ok)';
+        if (data.imported > 0) {
+          startEnrichPolling(data.imported);
+        }
       } else {
         resultEl.textContent = data.error || 'Import failed';
         resultEl.style.color = 'var(--err)';

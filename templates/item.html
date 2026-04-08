@@ -86,6 +86,14 @@
   </div>
   {% endif %}
 
+  <div id="enrich-skeleton" style="display: none; margin: 24px 0;">
+    <div class="skeleton-title" style="width: 40%; margin-bottom: 16px;"></div>
+    <div class="skeleton-line" style="width: 100%;"></div>
+    <div class="skeleton-line" style="width: 95%;"></div>
+    <div class="skeleton-line" style="width: 88%;"></div>
+    <div class="skeleton-line" style="width: 92%;"></div>
+    <div class="skeleton-line" style="width: 70%;"></div>
+  </div>
   {% if summary %}
   <div class="item-summary" id="item-summary">
     {{ summary }}
@@ -152,6 +160,11 @@
     <h2 class="item-section-label-warm">Go deeper</h2>
     <p class="discover-hint" id="discover-hint">Find more perspectives, alternatives, and deeper dives on this topic.</p>
     <button class="btn-secondary" id="discover-btn" data-bookmark-id="{{ item.id }}" style="margin-top: 8px;">Find related →</button>
+    <div id="discover-skeleton" style="display: none; margin-top: 16px;">
+      <div class="skeleton-card" style="margin-bottom: 8px;"><div class="skeleton-title"></div><div class="skeleton-line"></div></div>
+      <div class="skeleton-card" style="margin-bottom: 8px;"><div class="skeleton-title"></div><div class="skeleton-line"></div></div>
+      <div class="skeleton-card"><div class="skeleton-title"></div><div class="skeleton-line"></div></div>
+    </div>
     <div id="discover-results" style="display: none; margin-top: 16px;"></div>
   </div>
 
@@ -236,9 +249,11 @@ document.getElementById('discover-btn')?.addEventListener('click', async functio
   var hint = document.getElementById('discover-hint');
   btn.textContent = 'Searching...';
   btn.disabled = true;
+  document.getElementById('discover-skeleton').style.display = 'block';
   try {
     var resp = await fetch('/api/discover/' + id, {method: 'POST'});
     var data = await resp.json();
+    document.getElementById('discover-skeleton').style.display = 'none';
     if (data.results && data.results.length) {
       var html = '';
       data.results.forEach(function(r) {
@@ -275,6 +290,7 @@ document.getElementById('discover-btn')?.addEventListener('click', async functio
       btn.disabled = false;
     }
   } catch(e) {
+    document.getElementById('discover-skeleton').style.display = 'none';
     hint.textContent = 'Search failed. Try again later.';
     btn.textContent = 'Find related →';
     btn.disabled = false;
@@ -284,8 +300,9 @@ document.getElementById('discover-btn')?.addEventListener('click', async functio
 document.getElementById('enrich-btn')?.addEventListener('click', async function() {
   var btn = this;
   var bookmarkId = btn.dataset.bookmarkId;
-  btn.textContent = 'Enriching...';
+  btn.innerHTML = '<span class="enriching-spinner"></span>Enriching...';
   btn.disabled = true;
+  document.getElementById('enrich-skeleton').style.display = 'block';
   try {
     var resp = await fetch('/api/enrich/' + bookmarkId, {method: 'POST'});
     var data = await resp.json();

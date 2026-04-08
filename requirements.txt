@@ -1,0 +1,25 @@
+# Pinned dependencies for artemis-curiosity
+# Updated 2026-04-08 from installed versions in .venv
+
+# Core dependencies (pyproject.toml [project.dependencies])
+mcp==1.26.0
+httpx==0.28.1
+beautifulsoup4==4.14.3
+lxml==6.0.2
+pydantic==2.12.5
+
+# UI dependencies (pyproject.toml [project.optional-dependencies.ui])
+fastapi==0.135.3
+starlette==0.52.1
+uvicorn==0.41.0
+jinja2==3.1.6
+python-multipart==0.0.22
+feedparser==6.0.12
+PyPDF2==3.0.1
+
+# Watch dependencies (pyproject.toml [project.optional-dependencies.watch])
+watchdog==6.0.0
+
+# Dev dependencies (pyproject.toml [project.optional-dependencies.dev])
+pytest==9.0.3
+pytest-asyncio==1.3.0

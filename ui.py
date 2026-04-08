@@ -227,6 +227,11 @@ def get_db():
             cookies_json TEXT NOT NULL,
             created_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT
+        );
     """)
     # Highlights table
     conn.execute("""
@@ -241,6 +246,20 @@ def get_db():
         )
     """)
     return conn
+
+
+def _get_api_key(name: str) -> str:
+    """Get an API key. Checks DB (app_settings) first, then environment variable."""
+    import os
+    try:
+        db = get_db()
+        row = db.execute("SELECT value FROM app_settings WHERE key = ?", (name,)).fetchone()
+        db.close()
+        if row and row["value"]:
+            return row["value"]
+    except Exception:
+        pass
+    return os.environ.get(name, "")
 
 
 def _add_column_if_missing(conn, table, column, col_type):
@@ -351,6 +370,49 @@ def space_topic_ids(db, space_name):
     return [r["id"] for r in rows]
 
 
+def _get_dynamic_spaces(db):
+    """Build spaces dynamically from topic clusters. Seeds from SPACES dict, discovers new clusters."""
+    block_sql = blocked_filter_sql()
+    # Get all topics with counts
+    rows = db.execute(f"""
+        SELECT t.id, t.name, COUNT(DISTINCT bt.bookmark_id) as cnt
+        FROM topics t
+        JOIN bookmark_topics bt ON t.id = bt.topic_id
+        JOIN bookmarks b ON bt.bookmark_id = b.id
+        WHERE b.status = 'enriched' AND {block_sql}
+        GROUP BY t.id
+        HAVING cnt >= 1
+        ORDER BY cnt DESC
+    """).fetchall()
+
+    # Build space counts from seed mapping
+    space_counts = {}
+    unmapped = []
+    for row in rows:
+        space_name = TOPIC_TO_SPACE.get(row["name"])
+        if space_name:
+            if space_name not in space_counts:
+                space_counts[space_name] = {"name": space_name, **SPACES[space_name], "count": 0}
+            space_counts[space_name]["count"] += row["cnt"]
+        elif row["cnt"] >= 3:
+            unmapped.append({"name": row["name"], "count": row["cnt"]})
+
+    # Add unmapped topics as individual spaces
+    result = list(space_counts.values())
+    for topic in unmapped[:5]:  # cap at 5 extra spaces
+        result.append({
+            "name": topic["name"].replace("-", " ").title(),
+            "icon": "·",
+            "color": "#6b7280",
+            "count": topic["count"],
+            "topics": [topic["name"]],
+        })
+
+    result = [s for s in result if s["count"] > 0]
+    result.sort(key=lambda s: s["count"], reverse=True)
+    return result
+
+
 # Register template helpers
 templates.env.filters["parse_json"] = parse_json_field
 templates.env.filters["timeago"] = timeago
@@ -365,34 +427,27 @@ async def home(request: Request):
     db = get_db()
     block_sql = blocked_filter_sql()
 
-    # Compute space counts + previews
-    spaces_data = []
-    for name, sdata in SPACES.items():
-        topic_ids = space_topic_ids(db, name)
-        if not topic_ids:
-            spaces_data.append({"name": name, **sdata, "count": 0, "previews": []})
-            continue
-        placeholders = ",".join("?" * len(topic_ids))
-        count = db.execute(f"""
-            SELECT COUNT(DISTINCT bt.bookmark_id) FROM bookmark_topics bt
-            JOIN bookmarks b ON bt.bookmark_id = b.id
-            WHERE bt.topic_id IN ({placeholders}) AND b.status = 'enriched'
-            AND {block_sql}
-        """, topic_ids).fetchone()[0]
-        previews = db.execute(f"""
-            SELECT DISTINCT b.title FROM bookmark_topics bt
-            JOIN bookmarks b ON bt.bookmark_id = b.id
-            WHERE bt.topic_id IN ({placeholders}) AND b.status = 'enriched'
-            AND {block_sql}
-            ORDER BY b.added_at DESC LIMIT 2
-        """, topic_ids).fetchall()
-        spaces_data.append({
-            "name": name, **sdata, "count": count,
-            "previews": [p["title"] for p in previews],
-        })
-    # Sort by count desc, filter out empties
-    spaces_data = [s for s in spaces_data if s["count"] > 0]
-    spaces_data.sort(key=lambda s: s["count"], reverse=True)
+    # --- Batch stats in one query ---
+    stats_row = db.execute(f"""
+        SELECT
+            COUNT(*) as total_all,
+            SUM(CASE WHEN b.status = 'enriched' AND {block_sql} THEN 1 ELSE 0 END) as total_enriched,
+            SUM(CASE WHEN b.status = 'enriched' AND b.added_at > datetime('now', '-7 days') AND {block_sql} THEN 1 ELSE 0 END) as this_week
+        FROM bookmarks b
+    """).fetchone()
+    total_all = stats_row["total_all"] or 0
+    total_enriched = stats_row["total_enriched"] or 0
+    this_week_count = stats_row["this_week"] or 0
+    enriched_pct = round(total_enriched / total_all * 100) if total_all else 0
+
+    high_value_count = db.execute(f"""
+        SELECT COUNT(*) FROM bookmarks b
+        JOIN content c ON b.id = c.bookmark_id
+        WHERE c.learning_value = 'high' AND {block_sql}
+    """).fetchone()[0]
+
+    # --- Spaces: dynamic from topic clusters ---
+    spaces_data = _get_dynamic_spaces(db)
 
     # Picked for you: high-value items not yet viewed
     picked = db.execute(f"""
@@ -404,7 +459,6 @@ async def home(request: Request):
         AND b.id NOT IN (SELECT DISTINCT bookmark_id FROM item_views)
         ORDER BY b.added_at DESC LIMIT 3
     """).fetchall()
-    # Fallback to medium if no high-value unviewed
     if not picked:
         picked = db.execute(f"""
             SELECT b.id, b.title, b.domain, b.added_at, c.summary, c.learning_value
@@ -416,65 +470,12 @@ async def home(request: Request):
             ORDER BY RANDOM() LIMIT 3
         """).fetchall()
 
-    # Recently visited (from item_views)
-    visited = db.execute(f"""
-        SELECT DISTINCT b.id, b.title, b.domain, MAX(iv.viewed_at) as last_viewed
-        FROM item_views iv
-        JOIN bookmarks b ON iv.bookmark_id = b.id
-        WHERE iv.viewed_at > datetime('now', '-7 days')
-        AND {block_sql}
-        GROUP BY b.id
-        ORDER BY last_viewed DESC LIMIT 8
-    """).fetchall()
-
-    # Fresh: last 5 enriched
+    # Fresh: last 5 (any status, so pending items show too)
     fresh = db.execute(f"""
-        SELECT b.id, b.title, b.domain, b.added_at
+        SELECT b.id, b.title, b.domain, b.added_at, b.status as enrich_status
         FROM bookmarks b
-        WHERE b.status = 'enriched' AND {block_sql}
+        WHERE {block_sql}
         ORDER BY b.added_at DESC LIMIT 5
-    """).fetchall()
-
-    # Dashboard stats
-    total_all = db.execute("SELECT COUNT(*) FROM bookmarks").fetchone()[0]
-    total_enriched = db.execute(f"""
-        SELECT COUNT(*) FROM bookmarks b WHERE b.status = 'enriched' AND {block_sql}
-    """).fetchone()[0]
-    enriched_pct = round(total_enriched / total_all * 100) if total_all else 0
-    high_value_count = db.execute(f"""
-        SELECT COUNT(*) FROM bookmarks b
-        JOIN content c ON b.id = c.bookmark_id
-        WHERE c.learning_value = 'high' AND {block_sql}
-    """).fetchone()[0]
-    this_week_count = db.execute(f"""
-        SELECT COUNT(*) FROM bookmarks b
-        WHERE b.status = 'enriched' AND b.added_at > datetime('now', '-7 days')
-        AND {block_sql}
-    """).fetchone()[0]
-
-    # Reading streak
-    view_dates = db.execute("""
-        SELECT DISTINCT DATE(viewed_at) as d FROM item_views ORDER BY d DESC
-    """).fetchall()
-    streak = 0
-    if view_dates:
-        from datetime import date, timedelta
-        today = date.today()
-        for i in range(len(view_dates)):
-            check = today - timedelta(days=i)
-            if str(check) == view_dates[i]["d"] if i < len(view_dates) else False:
-                streak += 1
-            else:
-                break
-
-    # Trending topics (most viewed this week)
-    trending = db.execute("""
-        SELECT t.name, COUNT(DISTINCT iv.bookmark_id) as views
-        FROM item_views iv
-        JOIN bookmark_topics bt ON iv.bookmark_id = bt.bookmark_id
-        JOIN topics t ON bt.topic_id = t.id
-        WHERE iv.viewed_at > datetime('now', '-7 days')
-        GROUP BY t.id ORDER BY views DESC LIMIT 5
     """).fetchall()
 
     # Top domains
@@ -483,6 +484,21 @@ async def home(request: Request):
         WHERE b.status = 'enriched' AND {block_sql}
         GROUP BY domain ORDER BY cnt DESC LIMIT 5
     """).fetchall()
+
+    # Reading streak
+    view_dates = db.execute("""
+        SELECT DISTINCT DATE(viewed_at) as d FROM item_views ORDER BY d DESC LIMIT 30
+    """).fetchall()
+    streak = 0
+    if view_dates:
+        from datetime import date, timedelta
+        today = date.today()
+        for i in range(len(view_dates)):
+            check = today - timedelta(days=i)
+            if i < len(view_dates) and str(check) == view_dates[i]["d"]:
+                streak += 1
+            else:
+                break
 
     stats = {
         "total": total_enriched,
@@ -493,16 +509,17 @@ async def home(request: Request):
         "streak": streak,
     }
 
+    pending_count = db.execute(f"SELECT COUNT(*) FROM bookmarks b WHERE b.status IN ('pending', 'fetched') AND {block_sql}").fetchone()[0]
+
     db.close()
     return templates.TemplateResponse("home.html", {
         "request": request,
         "spaces": spaces_data,
         "picked": picked,
-        "visited": visited,
         "fresh": fresh,
         "stats": stats,
-        "trending": trending,
         "top_domains": top_domains,
+        "pending_count": pending_count,
     })
 
 
@@ -543,6 +560,7 @@ async def library(
     where = " AND ".join(conditions)
     bookmarks = db.execute(f"""
         SELECT b.id, b.title, b.domain, b.url, b.added_at, b.link_status,
+               b.status as enrich_status,
                c.summary, c.learning_value, c.content_type,
                COALESCE(b.read_status, 'unread') as read_status
         FROM bookmarks b
@@ -816,32 +834,24 @@ async def item_view(request: Request, item_id: str):
 async def spaces_overview(request: Request):
     db = get_db()
     block_sql = blocked_filter_sql()
-    spaces_data = []
-    for name, sdata in SPACES.items():
-        topic_ids = space_topic_ids(db, name)
-        if not topic_ids:
+    spaces_data = _get_dynamic_spaces(db)
+
+    # Add preview titles to each space
+    for space in spaces_data:
+        topic_names = space.get("topics", [])
+        if not topic_names:
             continue
-        placeholders = ",".join("?" * len(topic_ids))
-        count = db.execute(f"""
-            SELECT COUNT(DISTINCT bt.bookmark_id) FROM bookmark_topics bt
-            JOIN bookmarks b ON bt.bookmark_id = b.id
-            WHERE bt.topic_id IN ({placeholders}) AND b.status = 'enriched'
-            AND {block_sql}
-        """, topic_ids).fetchone()[0]
-        if count == 0:
-            continue
+        placeholders = ",".join("?" * len(topic_names))
         previews = db.execute(f"""
             SELECT DISTINCT b.title FROM bookmark_topics bt
             JOIN bookmarks b ON bt.bookmark_id = b.id
-            WHERE bt.topic_id IN ({placeholders}) AND b.status = 'enriched'
+            JOIN topics t ON bt.topic_id = t.id
+            WHERE t.name IN ({placeholders}) AND b.status = 'enriched'
             AND {block_sql}
             ORDER BY b.added_at DESC LIMIT 3
-        """, topic_ids).fetchall()
-        spaces_data.append({
-            "name": name, **sdata, "count": count,
-            "previews": [p["title"] for p in previews],
-        })
-    spaces_data.sort(key=lambda s: s["count"], reverse=True)
+        """, topic_names).fetchall()
+        space["previews"] = [p["title"] for p in previews]
+
     db.close()
     return templates.TemplateResponse("spaces.html", {
         "request": request,
@@ -1011,10 +1021,26 @@ async def chat_page(request: Request):
 # --- API endpoints ---
 
 @app.get("/api/search")
-async def api_search(q: str = Query(..., min_length=1)):
+async def api_search(q: str = Query(""), recent: int = Query(0)):
     db = get_db()
     block_sql = blocked_filter_sql()
     results = {"bookmarks": [], "notes": []}
+
+    if not q and recent > 0:
+        # Return recent saves
+        rows = db.execute(f"""
+            SELECT b.id, b.title, b.domain, b.url
+            FROM bookmarks b
+            WHERE {block_sql}
+            ORDER BY b.added_at DESC LIMIT ?
+        """, (recent,)).fetchall()
+        results["bookmarks"] = [dict(r) for r in rows]
+        db.close()
+        return JSONResponse(results)
+
+    if not q:
+        db.close()
+        return JSONResponse(results)
 
     try:
         rows = db.execute(f"""
@@ -1139,9 +1165,8 @@ async def api_ingest_url(request: Request):
     is_yt = _is_youtube(url)
     db.close()
 
-    # Auto-enrich in background if API key is set
-    import os
-    if os.environ.get("ANTHROPIC_API_KEY"):
+    # Auto-enrich in background if any AI provider is available
+    if _get_api_key("ANTHROPIC_API_KEY") or _get_api_key("GEMINI_API_KEY"):
         async def _bg_enrich():
             try:
                 await api_enrich_bookmark(bookmark_id)
@@ -2282,6 +2307,34 @@ async def api_import_omnivore(file: UploadFile = File(...)):
     return JSONResponse({"imported": imported, "skipped": skipped})
 
 
+@app.get("/api/import/status")
+async def api_import_status():
+    db = get_db()
+    total = db.execute("SELECT COUNT(*) FROM bookmarks WHERE source IN ('pocket', 'omnivore', 'chrome')").fetchone()[0]
+    enriched = db.execute("SELECT COUNT(*) FROM bookmarks WHERE source IN ('pocket', 'omnivore', 'chrome') AND status = 'enriched'").fetchone()[0]
+    pending = db.execute("SELECT COUNT(*) FROM bookmarks WHERE source IN ('pocket', 'omnivore', 'chrome') AND status != 'enriched'").fetchone()[0]
+    db.close()
+    return JSONResponse({"total": total, "enriched": enriched, "pending": pending})
+
+
+@app.post("/api/enrich-all")
+async def api_enrich_all():
+    db = get_db()
+    block_sql = blocked_filter_sql()
+    pending = db.execute(f"""
+        SELECT id FROM bookmarks WHERE status IN ('pending', 'fetched') AND {block_sql} LIMIT 50
+    """).fetchall()
+    db.close()
+    count = 0
+    for row in pending:
+        async def _bg(bid=row["id"]):
+            try: await api_enrich_bookmark(bid)
+            except: pass
+        asyncio.ensure_future(_bg())
+        count += 1
+    return JSONResponse({"queued": count})
+
+
 # --- Feature: OCR for Images ---
 
 @app.post("/api/upload-image")
@@ -2485,6 +2538,172 @@ def get_cookies_for_domain(db, url: str) -> dict:
     return cookies
 
 
+def _check_ai_providers_fast():
+    """Quick check: are keys configured? No HTTP calls (for fast page loads)."""
+    import os
+    providers = []
+    # Ollama: can't check without HTTP, just show as auto-detected
+    providers.append({"name": "Ollama", "key": "OLLAMA", "status": "auto-detected if running", "configured": False, "free": True, "editable": False})
+    # Gemini
+    gemini_key = _get_api_key("GEMINI_API_KEY")
+    providers.append({"name": "Gemini (free)", "key": "GEMINI_API_KEY", "status": "configured" if gemini_key else "not configured", "configured": bool(gemini_key), "free": True, "editable": True, "masked_key": f"{gemini_key[:8]}...{gemini_key[-4:]}" if len(gemini_key) > 12 else ""})
+    # Anthropic
+    anthropic_key = _get_api_key("ANTHROPIC_API_KEY")
+    providers.append({"name": "Anthropic", "key": "ANTHROPIC_API_KEY", "status": "configured" if anthropic_key else "not configured", "configured": bool(anthropic_key), "free": False, "editable": True, "masked_key": f"{anthropic_key[:8]}...{anthropic_key[-4:]}" if len(anthropic_key) > 12 else ""})
+    return providers
+
+
+async def _check_ai_providers():
+    """Check which AI providers are available and return their status."""
+    import os
+    providers = []
+
+    # Ollama
+    ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    ollama_status = "not running"
+    try:
+        r = httpx.get(f"{ollama_url}/api/tags", timeout=2)
+        if r.status_code == 200:
+            models = [m["name"] for m in r.json().get("models", [])]
+            ollama_status = f"running ({', '.join(models[:3])})" if models else "running (no models)"
+    except Exception:
+        pass
+    providers.append({"name": "Ollama", "key": "OLLAMA", "status": ollama_status, "configured": ollama_status != "not running", "free": True, "editable": False})
+
+    # Gemini
+    gemini_key = _get_api_key("GEMINI_API_KEY")
+    gemini_status = "not configured"
+    if gemini_key:
+        try:
+            r = httpx.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}",
+                json={"contents": [{"parts": [{"text": "Say OK"}]}]}, timeout=10,
+            )
+            if r.status_code == 200:
+                gemini_status = "connected"
+            elif r.status_code == 429:
+                gemini_status = "rate limited (try later)"
+            else:
+                gemini_status = f"error ({r.status_code})"
+        except Exception as e:
+            gemini_status = f"error: {e}"
+    providers.append({"name": "Gemini (free)", "key": "GEMINI_API_KEY", "status": gemini_status, "configured": bool(gemini_key), "free": True, "editable": True, "masked_key": f"{gemini_key[:8]}...{gemini_key[-4:]}" if len(gemini_key) > 12 else ""})
+
+    # Anthropic
+    anthropic_key = _get_api_key("ANTHROPIC_API_KEY")
+    anthropic_status = "not configured"
+    if anthropic_key:
+        try:
+            r = httpx.get(
+                "https://api.anthropic.com/v1/models",
+                headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01"}, timeout=10,
+            )
+            anthropic_status = "connected" if r.status_code == 200 else f"error ({r.status_code})"
+        except Exception as e:
+            anthropic_status = f"error: {e}"
+    providers.append({"name": "Anthropic", "key": "ANTHROPIC_API_KEY", "status": anthropic_status, "configured": bool(anthropic_key), "free": False, "editable": True, "masked_key": f"{anthropic_key[:8]}...{anthropic_key[-4:]}" if len(anthropic_key) > 12 else ""})
+
+    return providers
+
+
+@app.get("/api/ai-status")
+async def api_ai_status():
+    """Check AI provider status."""
+    providers = await _check_ai_providers()
+    active = next((p for p in providers if p["configured"] and "error" not in p["status"] and "not" not in p["status"]), None)
+    return JSONResponse({"providers": providers, "active": active["name"] if active else None})
+
+
+@app.post("/api/settings/api-key")
+async def api_save_key(request: Request):
+    """Save or delete an API key."""
+    body = await request.json()
+    key_name = body.get("key", "").strip()
+    key_value = body.get("value", "").strip()
+    if key_name not in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY"):
+        return JSONResponse({"error": "Invalid key name"}, status_code=400)
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    if key_value:
+        db.execute(
+            "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)",
+            (key_name, key_value, now),
+        )
+    else:
+        db.execute("DELETE FROM app_settings WHERE key = ?", (key_name,))
+    db.commit()
+    db.close()
+    return JSONResponse({"status": "saved" if key_value else "deleted", "key": key_name})
+
+
+@app.get("/api/export/markdown")
+async def api_export_markdown():
+    """Export library as Obsidian-compatible markdown zip."""
+    import zipfile
+    db = get_db()
+    block_sql = blocked_filter_sql()
+    bookmarks = db.execute(f"""
+        SELECT b.id, b.title, b.domain, b.url, b.added_at,
+               c.summary, c.key_insights, c.content_type, c.learning_value
+        FROM bookmarks b
+        LEFT JOIN content c ON b.id = c.bookmark_id
+        WHERE b.status = 'enriched' AND {block_sql}
+        ORDER BY b.added_at DESC
+    """).fetchall()
+
+    # Get topics for each bookmark
+    topics_map = {}
+    for row in db.execute("SELECT bookmark_id, topic_id FROM bookmark_topics").fetchall():
+        topics_map.setdefault(row["bookmark_id"], []).append(row["topic_id"])
+    topic_names = {}
+    for row in db.execute("SELECT id, name FROM topics").fetchall():
+        topic_names[row["id"]] = row["name"]
+
+    db.close()
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for b in bookmarks:
+            slug = re.sub(r'[^\w\s-]', '', (b["title"] or "untitled").lower())[:60].strip().replace(' ', '-')
+            topics = [topic_names.get(tid, "") for tid in topics_map.get(b["id"], [])]
+            insights = parse_json_field(b["key_insights"])
+
+            safe_title = (b['title'] or '').replace('"', "'")
+            added_date = b['added_at'][:10] if b['added_at'] else ''
+            md = f"""---
+title: "{safe_title}"
+url: {b['url']}
+domain: {b['domain']}
+added: {added_date}
+type: {b['content_type'] or 'article'}
+value: {b['learning_value'] or 'medium'}
+tags: [{', '.join(topics)}]
+---
+
+# {b['title'] or 'Untitled'}
+
+{b['summary'] or ''}
+
+"""
+            if insights:
+                md += "## Key Insights\n\n"
+                for insight in insights:
+                    md += f"- {insight}\n"
+                md += "\n"
+
+            md += f"[Original]({b['url']})\n"
+
+            zf.writestr(f"curiosity/{slug}.md", md)
+
+    buf.seek(0)
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=curiosity-export.zip"}
+    )
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     db = get_db()
@@ -2494,12 +2713,18 @@ async def settings_page(request: Request):
     total = db.execute("SELECT COUNT(*) FROM bookmarks").fetchone()[0]
     enriched = db.execute("SELECT COUNT(*) FROM bookmarks WHERE status = 'enriched'").fetchone()[0]
     stats = {"total": total, "enriched_pct": round(enriched / total * 100) if total else 0}
+    # Quick check: just show configured status without testing connections (fast page load)
+    import os
+    providers = _check_ai_providers_fast()
+    has_ai = any(p["configured"] for p in providers)
     db.close()
     return templates.TemplateResponse("settings.html", {
         "request": request,
         "active": "settings",
         "cookie_domains": cookie_domains,
         "stats": stats,
+        "providers": providers,
+        "has_ai": has_ai,
     })
 
 
@@ -2564,25 +2789,30 @@ async def serve_image(filename: str):
     return FileResponse(str(path), media_type=media_types.get(ext, "application/octet-stream"))
 
 
-async def _call_llm(prompt: str) -> str:
-    """Call an LLM. Tries: Ollama (free local) → Gemini (free tier) → Anthropic (paid)."""
+async def _call_llm(prompt: str) -> tuple[str, str]:
+    """Call an LLM. Tries: Ollama (free local) → Gemini (free tier) → Anthropic (paid).
+    Returns (text, error). If text is non-empty, error is empty. If all fail, error explains why."""
     import os
+    errors = []
 
     # 1. Ollama (free, local)
     ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.post(f"{ollama_url}/api/generate", json={
                 "model": os.environ.get("OLLAMA_MODEL", "llama3"),
                 "prompt": prompt, "stream": False,
             })
             if resp.status_code == 200:
-                return resp.json().get("response", "")
-    except Exception:
-        pass
+                return resp.json().get("response", ""), ""
+            errors.append(f"Ollama returned {resp.status_code}")
+    except httpx.ConnectError:
+        pass  # Ollama not running, skip silently
+    except Exception as e:
+        errors.append(f"Ollama: {e}")
 
     # 2. Google Gemini (free tier — 15 RPM, 1M tokens/day)
-    gemini_key = os.environ.get("GEMINI_API_KEY")
+    gemini_key = _get_api_key("GEMINI_API_KEY")
     if gemini_key:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
@@ -2591,12 +2821,17 @@ async def _call_llm(prompt: str) -> str:
                     json={"contents": [{"parts": [{"text": prompt}]}]},
                 )
                 if resp.status_code == 200:
-                    return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception:
-            pass
+                    return resp.json()["candidates"][0]["content"]["parts"][0]["text"], ""
+                elif resp.status_code == 429:
+                    errors.append("Gemini: rate limit exceeded. Wait a minute and try again.")
+                else:
+                    detail = resp.json().get("error", {}).get("message", resp.text[:200])
+                    errors.append(f"Gemini ({resp.status_code}): {detail}")
+        except Exception as e:
+            errors.append(f"Gemini: {e}")
 
     # 3. Anthropic (paid)
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    anthropic_key = _get_api_key("ANTHROPIC_API_KEY")
     if anthropic_key:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
@@ -2606,11 +2841,15 @@ async def _call_llm(prompt: str) -> str:
                     json={"model": "claude-haiku-4-5-20251001", "max_tokens": 1024, "messages": [{"role": "user", "content": prompt}]},
                 )
                 if resp.status_code == 200:
-                    return resp.json()["content"][0]["text"]
-        except Exception:
-            pass
+                    return resp.json()["content"][0]["text"], ""
+                detail = resp.json().get("error", {}).get("message", resp.text[:200])
+                errors.append(f"Anthropic ({resp.status_code}): {detail}")
+        except Exception as e:
+            errors.append(f"Anthropic: {e}")
 
-    return ""
+    if not errors:
+        return "", "No AI provider configured. Go to Settings to set up Gemini or Anthropic."
+    return "", " | ".join(errors)
 
 
 @app.post("/api/enrich/{bookmark_id}")
@@ -2664,99 +2903,92 @@ Content (truncated to 6000 chars):
 
 Return ONLY valid JSON, no markdown fences."""
 
-    text = await _call_llm(prompt)
+    text, llm_error = await _call_llm(prompt)
     if not text:
         db.close()
-        has_ollama = False
-        try:
-            r = httpx.get(os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/tags", timeout=2)
-            has_ollama = r.status_code == 200
-        except Exception:
-            pass
-        if has_ollama:
-            return JSONResponse({"error": "Ollama is running but the model failed. Try: ollama pull llama3"}, status_code=400)
-        return JSONResponse({"error": "No AI provider found. Install Ollama (free, local): ollama.com — or set GEMINI_API_KEY (free tier) or ANTHROPIC_API_KEY."}, status_code=400)
+        return JSONResponse({"error": llm_error}, status_code=400)
 
     try:
         # Clean markdown fences if present
-        if text.strip().startswith("```"):
-            text = text.strip().split("\n", 1)[1].rsplit("```", 1)[0]
+        clean = text.strip()
+        if clean.startswith("```"):
+            clean = clean.split("\n", 1)[1].rsplit("```", 1)[0]
 
-            # Parse the JSON response
-            enrichment = json.loads(text)
+        # Parse the JSON response
+        enrichment = json.loads(clean)
 
-            now = datetime.now(timezone.utc).isoformat()
-            db.execute("""
-                INSERT OR REPLACE INTO content
-                (bookmark_id, raw_text, summary, key_insights, content_type, learning_value, enriched_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                bookmark_id,
-                raw_text,
-                enrichment.get("summary", ""),
-                json.dumps(enrichment.get("key_insights", [])),
-                enrichment.get("content_type", "article"),
-                enrichment.get("learning_value", "medium"),
-                now,
-            ))
+        now = datetime.now(timezone.utc).isoformat()
+        db.execute("""
+            INSERT OR REPLACE INTO content
+            (bookmark_id, raw_text, summary, key_insights, content_type, learning_value, enriched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            bookmark_id,
+            raw_text,
+            enrichment.get("summary", ""),
+            json.dumps(enrichment.get("key_insights", [])),
+            enrichment.get("content_type", "article"),
+            enrichment.get("learning_value", "medium"),
+            now,
+        ))
 
-            # Update bookmark status
-            db.execute("UPDATE bookmarks SET status = 'enriched', title = COALESCE(NULLIF(title, url), ?) WHERE id = ?",
-                        (bookmark["title"] or enrichment.get("summary", "")[:80], bookmark_id))
+        # Update bookmark status
+        db.execute("UPDATE bookmarks SET status = 'enriched', title = COALESCE(NULLIF(title, url), ?) WHERE id = ?",
+                    (bookmark["title"] or enrichment.get("summary", "")[:80], bookmark_id))
 
-            # Create/link topics
-            for topic_name in enrichment.get("topics", []):
-                topic_name = topic_name.lower().strip()
-                if not topic_name:
-                    continue
-                existing = db.execute("SELECT id FROM topics WHERE name = ?", (topic_name,)).fetchone()
-                if existing:
-                    topic_id = existing["id"]
-                else:
-                    db.execute("INSERT INTO topics (name) VALUES (?)", (topic_name,))
-                    topic_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-                try:
-                    db.execute("INSERT INTO bookmark_topics (bookmark_id, topic_id) VALUES (?, ?)", (bookmark_id, topic_id))
-                except sqlite3.IntegrityError:
-                    pass
-
-            # Create/link author
-            author_name = enrichment.get("author_name")
-            if author_name:
-                slug = author_name.lower().replace(" ", "-")
-                existing = db.execute("SELECT id FROM experts WHERE id = ?", (slug,)).fetchone()
-                if not existing:
-                    db.execute("INSERT INTO experts (id, name, created_at) VALUES (?, ?, ?)", (slug, author_name, now))
-                try:
-                    db.execute("INSERT INTO bookmark_experts (bookmark_id, expert_id) VALUES (?, ?)", (bookmark_id, slug))
-                except sqlite3.IntegrityError:
-                    pass
-
-            # Update FTS
+        # Create/link topics
+        for topic_name in enrichment.get("topics", []):
+            topic_name = topic_name.lower().strip()
+            if not topic_name:
+                continue
+            existing = db.execute("SELECT id FROM topics WHERE name = ?", (topic_name,)).fetchone()
+            if existing:
+                topic_id = existing["id"]
+            else:
+                db.execute("INSERT INTO topics (name) VALUES (?)", (topic_name,))
+                topic_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
             try:
-                db.execute("DELETE FROM bookmarks_fts WHERE bookmark_id = ?", (bookmark_id,))
-                db.execute(
-                    "INSERT INTO bookmarks_fts (bookmark_id, title, summary, key_insights) VALUES (?, ?, ?, ?)",
-                    (bookmark_id, bookmark["title"] or "", enrichment.get("summary", ""), text),
-                )
-            except Exception:
+                db.execute("INSERT INTO bookmark_topics (bookmark_id, topic_id) VALUES (?, ?)", (bookmark_id, topic_id))
+            except sqlite3.IntegrityError:
                 pass
 
-            db.commit()
-
-            # Run automation rules
+        # Create/link author
+        author_name = enrichment.get("author_name")
+        if author_name:
+            slug = author_name.lower().replace(" ", "-")
+            existing = db.execute("SELECT id FROM experts WHERE id = ?", (slug,)).fetchone()
+            if not existing:
+                db.execute("INSERT INTO experts (id, name, created_at) VALUES (?, ?, ?)", (slug, author_name, now))
             try:
-                run_rules_on_bookmark(db, bookmark_id)
-            except Exception:
+                db.execute("INSERT INTO bookmark_experts (bookmark_id, expert_id) VALUES (?, ?)", (bookmark_id, slug))
+            except sqlite3.IntegrityError:
                 pass
 
-            db.close()
-            return JSONResponse({
-                "status": "enriched",
-                "summary": enrichment.get("summary", ""),
-                "topics": enrichment.get("topics", []),
-                "learning_value": enrichment.get("learning_value"),
-            })
+        # Update FTS
+        try:
+            db.execute("DELETE FROM bookmarks_fts WHERE bookmark_id = ?", (bookmark_id,))
+            db.execute(
+                "INSERT INTO bookmarks_fts (bookmark_id, title, summary, key_insights) VALUES (?, ?, ?, ?)",
+                (bookmark_id, bookmark["title"] or "", enrichment.get("summary", ""), clean),
+            )
+        except Exception:
+            pass
+
+        db.commit()
+
+        # Run automation rules
+        try:
+            run_rules_on_bookmark(db, bookmark_id)
+        except Exception:
+            pass
+
+        db.close()
+        return JSONResponse({
+            "status": "enriched",
+            "summary": enrichment.get("summary", ""),
+            "topics": enrichment.get("topics", []),
+            "learning_value": enrichment.get("learning_value"),
+        })
 
     except Exception as e:
         db.close()
@@ -2872,10 +3104,5 @@ async def api_save_discovered(request: Request):
 
 
 if __name__ == "__main__":
-    import sys as _sys
-    _host = "127.0.0.1"
-    _port = 8080
-    if "--host" in _sys.argv: _host = _sys.argv[_sys.argv.index("--host") + 1]
-    if "--port" in _sys.argv: _port = int(_sys.argv[_sys.argv.index("--port") + 1])
-    print(f"curiosity — http://{_host}:{_port}")
-    uvicorn.run(app, host=_host, port=_port)
+    print("curiosity — http://localhost:8080")
+    uvicorn.run(app, host="127.0.0.1", port=8080)

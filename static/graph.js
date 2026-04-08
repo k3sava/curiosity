@@ -53,7 +53,7 @@
       .selectAll('line')
       .data(data.edges)
       .join('line')
-      .attr('stroke', 'var(--border, #ddd)')
+      .attr('stroke', 'var(--line, #ddd)')
       .attr('stroke-width', d => 1 + d.shared * 0.5)
       .attr('stroke-opacity', d => 0.3 + d.strength * 0.5);
 
@@ -90,7 +90,7 @@
       .attr('dy', d => sizeScale(d.count) + 14)
       .attr('font-size', 11)
       .attr('font-weight', 500)
-      .attr('fill', 'var(--text-muted, #666)')
+      .attr('fill', 'var(--ink-3, #666)')
       .text(d => d.id);
 
     // Count label
@@ -98,7 +98,7 @@
       .attr('text-anchor', 'middle')
       .attr('dy', d => sizeScale(d.count) + 26)
       .attr('font-size', 10)
-      .attr('fill', 'var(--text-muted, #999)')
+      .attr('fill', 'var(--ink-4, #999)')
       .text(d => d.count + ' items');
 
     // Hover
@@ -111,7 +111,7 @@
         let html = '<strong>' + escHtml(d.id) + '</strong> (' + d.count + ')<br>';
         if (d.top_items) {
           d.top_items.forEach(function(t) {
-            html += '<span style="color:var(--text-muted,#888)">' + escHtml(t.substring(0, 50)) + '</span><br>';
+            html += '<span style="color:var(--ink-3,#888)">' + escHtml(t.substring(0, 50)) + '</span><br>';
           });
         }
         tooltip.innerHTML = html;

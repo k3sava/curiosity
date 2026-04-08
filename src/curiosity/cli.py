@@ -6,24 +6,30 @@ from pathlib import Path
 
 __all__ = ["main"]
 
-PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent  # mcp/curiosity/
+def _find_ui_dir() -> str:
+    """Find the directory containing ui.py. Works in dev and Docker."""
+    # 1. Current working directory (Docker: /app)
+    cwd = Path.cwd()
+    if (cwd / "ui.py").exists():
+        return str(cwd)
+    # 2. Relative to this file (dev: mcp/curiosity/src/curiosity/cli.py -> mcp/curiosity/)
+    dev_root = Path(__file__).resolve().parent.parent.parent
+    if (dev_root / "ui.py").exists():
+        return str(dev_root)
+    # 3. Fallback: search common locations
+    for candidate in [Path("/app"), Path.home() / "curiosity"]:
+        if (candidate / "ui.py").exists():
+            return str(candidate)
+    return str(cwd)  # last resort
 
 
 def _serve(port: int = 8080, host: str = "127.0.0.1") -> None:
     """Start the curiosity web UI."""
-    import os
     import uvicorn
 
-    # ui.py lives alongside the package root. Find it.
-    ui_dir = str(PACKAGE_ROOT)
+    ui_dir = _find_ui_dir()
     if ui_dir not in sys.path:
         sys.path.insert(0, ui_dir)
-
-    # Also try /app (Docker) and cwd
-    for candidate in ["/app", os.getcwd()]:
-        ui_path = os.path.join(candidate, "ui.py")
-        if os.path.exists(ui_path) and candidate not in sys.path:
-            sys.path.insert(0, candidate)
 
     print(f"curiosity — http://{host}:{port}")
     uvicorn.run("ui:app", host=host, port=port)

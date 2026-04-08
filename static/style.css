@@ -1298,9 +1298,13 @@ a.trending-item:hover { background: var(--surface-sunken); padding-left: 8px; ma
 
 /* --- Responsive --- */
 @media (max-width: 768px) {
-  .topbar-nav { display: none; }
-  .cmd-k-trigger { min-width: 0; }
+  .topbar-nav { display: flex; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .topbar-nav::-webkit-scrollbar { display: none; }
+  .topbar-link { font-size: 12px; padding: 6px 8px; white-space: nowrap; }
+  .topbar-logo { margin-right: 12px; }
+  .cmd-k-trigger { min-width: 0; padding: 0 8px; }
   .cmd-k-text { display: none; }
+  .cmd-k-kbd { display: none; }
   .main { padding: 16px; }
   .spaces-compact { grid-template-columns: 1fr; }
 }
@@ -1520,6 +1524,9 @@ a.trending-item:hover { background: var(--surface-sunken); padding-left: 8px; ma
   font-size: 12px;
   color: var(--ink-3);
 }
+
+/* --- Pending banner --- */
+.pending-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--warn-wash); border: 1px solid var(--warn); border-radius: var(--r-md); font-size: 13px; color: var(--warn); max-width: 560px; margin: 0 auto 16px; }
 
 /* --- Briefing (narrative home) --- */
 .briefing { margin-bottom: 24px; }
@@ -1904,3 +1911,283 @@ a.trending-item:hover { background: var(--surface-sunken); padding-left: 8px; ma
 .cookie-delete:hover {
   text-decoration: underline;
 }
+
+/* --- AI Provider Settings --- */
+.provider-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.provider-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--r-md); }
+.provider-info { display: flex; align-items: center; gap: 8px; }
+.provider-name { font-weight: 500; font-size: 13px; }
+.provider-badge { font-size: 10px; padding: 1px 6px; background: var(--ok-wash); color: var(--ok); border-radius: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; }
+.provider-status { font-size: 12px; margin-left: auto; }
+.provider-status-ok { color: var(--ok); }
+.provider-status-err { color: var(--signal); }
+.provider-status-off { color: var(--ink-4); }
+.provider-key { font-size: 11px; color: var(--ink-4); font-family: monospace; }
+
+.api-key-form { margin-top: 8px; padding: 12px 14px; background: var(--surface-sunken); border-radius: var(--r-md); }
+.api-key-input { padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); outline: none; }
+.api-key-input:focus { border-color: var(--accent); }
+
+.setup-guide { margin-top: 16px; padding: 16px; background: var(--accent-wash); border: 1px solid var(--accent); border-radius: var(--r-card); }
+.setup-guide-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--accent); }
+.setup-option { margin-bottom: 12px; font-size: 13px; }
+.setup-option:last-child { margin-bottom: 0; }
+.setup-option ol { margin-top: 4px; padding-left: 20px; list-style: decimal; }
+.setup-option li { margin-bottom: 2px; line-height: 1.6; }
+.setup-option code { font-size: 12px; background: var(--surface); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line-soft); }
+.setup-option a { color: var(--accent); text-decoration: underline; }
+
+/* --- Toast --- */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 20px; border-radius: var(--r-md); font-size: 13px; z-index: 1000; animation: toast-in .3s var(--ease), toast-out .3s var(--ease) 2.5s forwards; pointer-events: none; }
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
+
+/* --- Pending Status Badges --- */
+.status-badge { font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; }
+.status-badge-pending { background: var(--warn-wash); color: var(--warn); }
+.status-badge-fetched { background: var(--accent-wash); color: var(--accent); }
+.status-badge-enriched { background: var(--ok-wash); color: var(--ok); }
+
+/* --- Home Save Input --- */
+.home-save-form { display: flex; gap: 8px; max-width: 560px; margin: 0 auto 32px; }
+.home-save-input { flex: 1; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-md); font-size: 14px; background: var(--surface); color: var(--ink); outline: none; transition: border-color var(--dur) var(--ease); }
+.home-save-input:focus { border-color: var(--accent); }
+.home-save-input::placeholder { color: var(--ink-4); }
+
+/* =============================================================
+   Dark Mode — Component Overrides
+   ============================================================= */
+
+/* Provider settings */
+[data-theme="dark"] .provider-row { background: var(--surface); border-color: var(--line); }
+
+/* Toast: in dark mode --ink becomes light, so we need explicit dark bg */
+[data-theme="dark"] .toast { background: #E5E5EA; color: #1C1C1E; }
+
+/* Bulk bar uses --ink bg which flips in dark */
+[data-theme="dark"] .bulk-bar { background: #E5E5EA; color: #1C1C1E; }
+[data-theme="dark"] .bulk-bar .btn-secondary { color: #1C1C1E; border-color: rgba(0,0,0,.2); }
+[data-theme="dark"] .bulk-bar .btn-secondary:hover { border-color: rgba(0,0,0,.5); }
+
+/* Highlight popup button */
+[data-theme="dark"] .highlight-popup button { background: var(--ink); color: var(--paper); }
+[data-theme="dark"] .highlight-popup button:hover { background: #ccc; }
+
+/* Read status active btn uses --ink bg */
+[data-theme="dark"] .read-status-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* Card hover shadow */
+[data-theme="dark"] a.card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+
+/* Topbar shadow — more visible on dark canvas */
+[data-theme="dark"] .topbar { box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+
+/* Filter active pill — uses --ink bg which flips light in dark */
+[data-theme="dark"] .filter-active { background: #E5E5EA; color: #1C1C1E; }
+[data-theme="dark"] .filter-active a { color: #1C1C1E; }
+
+/* Space pill active state — same --ink / --paper flip issue */
+[data-theme="dark"] .space-pill.active { background: #E5E5EA; color: #1C1C1E; }
+
+/* View toggle active — shadow too subtle in dark */
+[data-theme="dark"] .view-btn.active { box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+
+/* Cmd-K modal — deeper shadow in dark */
+[data-theme="dark"] .cmd-k-modal { box-shadow: 0 12px 32px -8px rgba(0,0,0,.4); }
+[data-theme="dark"] .cmd-k-overlay { background: rgba(0,0,0,.5); }
+
+/* Overflow dropdown — deeper shadow */
+[data-theme="dark"] .overflow-dropdown { box-shadow: 0 8px 24px -8px rgba(0,0,0,.3); }
+
+/* Search results dropdown */
+[data-theme="dark"] .search-results-dropdown { box-shadow: 0 8px 24px -8px rgba(0,0,0,.3); }
+
+/* Graph container — inset shadow visibility */
+[data-theme="dark"] .graph-container { box-shadow: inset 0 2px 6px rgba(0,0,0,.2); }
+
+/* Graph tooltip — deeper shadow */
+[data-theme="dark"] .graph-tooltip { box-shadow: 0 4px 12px -2px rgba(0,0,0,.3); }
+
+/* Highlight popup — button hover was hardcoded #333 */
+[data-theme="dark"] .highlight-popup button { background: #E5E5EA; color: #1C1C1E; }
+[data-theme="dark"] .highlight-popup button:hover { background: #C7C7CC; }
+
+/* Chat user bubble — in dark, --ink becomes light so bubble blends */
+[data-theme="dark"] .chat-bubble-user { background: #E5E5EA; color: #1C1C1E; }
+
+/* Import progress bar — uses nonexistent --wash var */
+[data-theme="dark"] #import-progress [style*="--wash"] { background: var(--surface-sunken); }
+
+/* Read status active button — uses --ink bg */
+[data-theme="dark"] .read-status-btn.active { background: #E5E5EA; color: #1C1C1E; border-color: #E5E5EA; }
+[data-theme="dark"] .read-status-btn[data-status="reading"].active { background: var(--signal); color: #fff; border-color: var(--signal); }
+[data-theme="dark"] .read-status-btn[data-status="read"].active { background: var(--ok); color: #fff; border-color: var(--ok); }
+
+/* Discover card borders visible in dark */
+[data-theme="dark"] .discover-card { border-color: var(--line); }
+
+/* Empty state border */
+[data-theme="dark"] .empty-state { border-color: var(--line); }
+
+/* Highlight item — signal-wash should work but ensure contrast */
+[data-theme="dark"] .highlight-item { background: var(--signal-wash); }
+
+/* Note card bottom border */
+[data-theme="dark"] .note-card { border-bottom-color: var(--line); }
+
+/* Settings section */
+[data-theme="dark"] .settings-section { background: var(--surface); border-color: var(--line); }
+
+/* Setup guide */
+[data-theme="dark"] .setup-guide { background: var(--accent-wash); border-color: rgba(75,141,212,.3); }
+[data-theme="dark"] .setup-option code { background: var(--surface-sunken); border-color: var(--line); }
+
+/* =============================================================
+   Skeleton Loading States
+   ============================================================= */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--line-soft) 50%, var(--surface-sunken) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: var(--r-sm);
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--line-soft) 50%, var(--surface-sunken) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-card);
+  height: 120px;
+}
+
+.skeleton-line {
+  height: 12px;
+  width: 80%;
+  background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--line-soft) 50%, var(--surface-sunken) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: var(--r-sm);
+  margin-bottom: 8px;
+}
+
+.skeleton-title {
+  height: 16px;
+  width: 60%;
+  background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--line-soft) 50%, var(--surface-sunken) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: var(--r-sm);
+  margin-bottom: 10px;
+}
+
+/* Enriching spinner for item page */
+.enriching-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Bulk operation progress indicator */
+.bulk-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.bulk-progress .enriching-spinner {
+  width: 12px;
+  height: 12px;
+}
+
+/* =============================================================
+   Keyboard Shortcuts Overlay
+   ============================================================= */
+.shortcuts-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .4);
+  z-index: 500;
+  justify-content: center;
+  align-items: center;
+}
+
+.shortcuts-overlay.visible {
+  display: flex;
+}
+
+.shortcuts-modal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 24px 28px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .15);
+}
+
+.shortcuts-modal h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shortcut-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.shortcut-keys {
+  display: flex;
+  gap: 4px;
+}
+
+.shortcut-keys kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-family: var(--font);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--ink-3);
+  box-shadow: 0 1px 0 var(--line);
+}
+
+[data-theme="dark"] .shortcuts-modal { background: var(--surface); border-color: var(--line); }
+[data-theme="dark"] .shortcuts-overlay { background: rgba(0, 0, 0, .6); }

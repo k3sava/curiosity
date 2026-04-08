@@ -10,15 +10,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}curiosity{% endblock %}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=20260407b">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>?</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="/static/style.css?v={{ range(10000,99999) | random }}">
   {% block head %}{% endblock %}
 </head>
 <body>
   <header class="topbar">
     <a href="/" class="topbar-logo">curiosity</a>
     <nav class="topbar-nav">
+      <a href="/" class="topbar-link{% if active == 'home' %} active{% endif %}">Home</a>
       <a href="/library" class="topbar-link{% if active == 'library' %} active{% endif %}">Library</a>
       <a href="/spaces" class="topbar-link{% if active == 'spaces' %} active{% endif %}">Spaces</a>
       <a href="/review" class="topbar-link{% if active == 'review' %} active{% endif %}">Review</a>
@@ -55,6 +59,31 @@
     </div>
   </div>
 
+  <!-- Keyboard shortcuts overlay -->
+  <div class="shortcuts-overlay" id="shortcuts-overlay">
+    <div class="shortcuts-modal">
+      <h3>Keyboard shortcuts</h3>
+      <div class="shortcuts-list">
+        <div class="shortcut-row">
+          <span>Search / Save URL</span>
+          <div class="shortcut-keys"><kbd>&#8984;K</kbd><span style="color:var(--ink-4);font-size:11px">or</span><kbd>/</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span>New note</span>
+          <div class="shortcut-keys"><kbd>n</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span>Go back</span>
+          <div class="shortcut-keys"><kbd>&#8592;</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span>Show shortcuts</span>
+          <div class="shortcut-keys"><kbd>?</kbd></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/cmd-k.js"></script>
   <script>
     (function() {
@@ -65,6 +94,57 @@
         var isDark = html.getAttribute('data-theme') === 'dark';
         if (isDark) { html.removeAttribute('data-theme'); localStorage.setItem('curiosity-theme', 'light'); }
         else { html.setAttribute('data-theme', 'dark'); localStorage.setItem('curiosity-theme', 'dark'); }
+      });
+    })();
+  </script>
+  <script>
+    (function() {
+      var overlay = document.getElementById('shortcuts-overlay');
+
+      function isEditing() {
+        var el = document.activeElement;
+        if (!el) return false;
+        var tag = el.tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+      }
+
+      document.addEventListener('keydown', function(e) {
+        // Close shortcuts overlay on Escape
+        if (e.key === 'Escape' && overlay.classList.contains('visible')) {
+          overlay.classList.remove('visible');
+          return;
+        }
+
+        // Don't fire shortcuts when typing in inputs
+        if (isEditing()) return;
+
+        // ? — toggle shortcuts overlay
+        if (e.key === '?') {
+          e.preventDefault();
+          overlay.classList.toggle('visible');
+          return;
+        }
+
+        // n — navigate to notes
+        if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          window.location.href = '/notes';
+          return;
+        }
+
+        // ArrowLeft or Backspace — go back
+        if ((e.key === 'ArrowLeft' || e.key === 'Backspace') && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          history.back();
+          return;
+        }
+      });
+
+      // Close overlay when clicking outside modal
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+          overlay.classList.remove('visible');
+        }
       });
     })();
   </script>

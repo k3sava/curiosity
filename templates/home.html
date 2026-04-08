@@ -35,7 +35,11 @@
     {% for f in fresh %}
     <a href="/item/{{ f.id }}" class="fresh-item stagger" style="--i: {{ loop.index0 }}">
       <span class="fresh-title">{{ f.title or 'Untitled' }}</span>
-      <span class="fresh-meta">{{ f.domain }} · {{ f.added_at|timeago }}</span>
+      <span class="fresh-meta">
+        {{ f.domain }} · {{ f.added_at|timeago }}
+        {% if f.enrich_status is defined and f.enrich_status == 'pending' %}<span class="status-badge status-badge-pending">pending</span>
+        {% elif f.enrich_status is defined and f.enrich_status == 'fetched' %}<span class="status-badge status-badge-fetched">saved</span>{% endif %}
+      </span>
     </a>
     {% endfor %}
   </div>
@@ -43,8 +47,21 @@
 {% endif %}
 
 {% else %}
+{# Save input — always visible #}
+<form class="home-save-form stagger" style="--i: 0" id="home-save-form">
+  <input type="url" class="home-save-input" id="home-save-url" placeholder="Paste a URL to save..." autocomplete="off">
+  <button type="submit" class="btn-primary">Save</button>
+</form>
+
+{% if pending_count > 0 %}
+<div class="pending-banner stagger" style="--i: 1">
+  <span>{{ pending_count }} bookmark{{ 's' if pending_count != 1 }} waiting to be enriched</span>
+  <button class="btn-primary" id="enrich-all-btn" style="font-size: 12px; height: 30px;">Enrich all</button>
+</div>
+{% endif %}
+
 {# The daily briefing #}
-<div class="briefing stagger" style="--i: 0">
+<div class="briefing stagger" style="--i: 2">
   <p class="briefing-text">You've saved <strong>{{ stats.total }}</strong> items and enriched <strong>{{ stats.enriched_pct }}%</strong> of them.{% if stats.this_week > 0 %} <strong>{{ stats.this_week }}</strong> new this week.{% endif %}{% if stats.high_value > 0 %} <strong>{{ stats.high_value }}</strong> marked high value.{% endif %}</p>
 </div>
 
@@ -77,7 +94,11 @@
     {% for f in fresh %}
     <a href="/item/{{ f.id }}" class="fresh-item stagger" style="--i: {{ loop.index0 + 4 }}">
       <span class="fresh-title">{{ f.title or 'Untitled' }}</span>
-      <span class="fresh-meta">{{ f.domain }} · {{ f.added_at|timeago }}</span>
+      <span class="fresh-meta">
+        {{ f.domain }} · {{ f.added_at|timeago }}
+        {% if f.enrich_status is defined and f.enrich_status == 'pending' %}<span class="status-badge status-badge-pending">pending</span>
+        {% elif f.enrich_status is defined and f.enrich_status == 'fetched' %}<span class="status-badge status-badge-fetched">saved</span>{% endif %}
+      </span>
     </a>
     {% endfor %}
   </div>
@@ -137,6 +158,46 @@
     });
   }
 
+  // Home save form (for users with content)
+  var homeForm = document.getElementById('home-save-form');
+  if (homeForm) {
+    homeForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var input = document.getElementById('home-save-url');
+      var url = input.value.trim();
+      if (!url) return;
+      var btn = homeForm.querySelector('button');
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+      try {
+        var resp = await fetch('/api/ingest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: url })
+        });
+        var data = await resp.json();
+        if (data.status === 'exists') {
+          input.value = '';
+          input.placeholder = 'Already saved. Try another...';
+        } else {
+          input.value = '';
+          input.placeholder = 'Saved! Paste another...';
+          // Show toast
+          var t = document.createElement('div');
+          t.className = 'toast';
+          t.textContent = 'Saved: ' + (data.title || url).substring(0, 60);
+          document.body.appendChild(t);
+          setTimeout(function() { t.remove(); }, 3000);
+          setTimeout(function() { location.reload(); }, 1500);
+        }
+      } catch(err) {
+        input.placeholder = 'Something went wrong. Try again.';
+      }
+      btn.textContent = 'Save';
+      btn.disabled = false;
+    });
+  }
+
   var upload = document.getElementById('onboarding-upload');
   if (upload) {
     upload.addEventListener('change', async function() {
@@ -149,6 +210,33 @@
         var resp = await fetch(endpoint, { method: 'POST', body: formData });
         if (resp.ok) location.reload();
       } catch(err) {}
+    });
+  }
+
+  var enrichBtn = document.getElementById('enrich-all-btn');
+  if (enrichBtn) {
+    enrichBtn.addEventListener('click', async function() {
+      enrichBtn.textContent = 'Enriching...';
+      enrichBtn.disabled = true;
+      try {
+        var resp = await fetch('/api/enrich-all', { method: 'POST' });
+        var data = await resp.json();
+        enrichBtn.textContent = data.queued + ' queued';
+        // Show skeleton cards while waiting for enrichment
+        var banner = enrichBtn.closest('.pending-banner');
+        if (banner) {
+          var skel = document.createElement('div');
+          skel.style.cssText = 'display:grid;grid-template-columns:1fr;gap:8px;max-width:560px;margin:16px auto 0;';
+          for (var si = 0; si < 3; si++) {
+            skel.innerHTML += '<div class="skeleton-card"><div class="skeleton-title"></div><div class="skeleton-line"></div><div class="skeleton-line" style="width:60%"></div></div>';
+          }
+          banner.parentNode.insertBefore(skel, banner.nextSibling);
+        }
+        setTimeout(function() { location.reload(); }, 5000);
+      } catch(err) {
+        enrichBtn.textContent = 'Error';
+        enrichBtn.disabled = false;
+      }
     });
   }
 })();
