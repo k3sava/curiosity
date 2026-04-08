@@ -1,6 +1,6 @@
 # Curiosity
 
-*is what makes the cat meow...*
+*Is what makes the cat meow...*
 
 I wanted to learn about positioning. I found one good article. Then I wanted more — different angles, counterpoints, frameworks I hadn't seen. I ended up with 40 tabs open and no system for any of it.
 
