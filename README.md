@@ -10,9 +10,7 @@ So I built Curiosity.
 
 ## What is it
 
-One place for everything you find on the web. Save it. Curiosity reads it, pulls out the ideas worth keeping, connects it to what you already know, and makes sure you don't forget the important parts.
-
-That's it. That's the whole thing.
+One place for everything you find on the web. Save it. Curiosity reads it, pulls out the ideas worth keeping, connects it to what you already know, and makes sure you don't forget the important parts. That's it. That's the whole thing.
 
 HOME
 ![Home](docs/screenshots/home.png)
