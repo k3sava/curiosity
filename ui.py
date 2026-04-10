@@ -3000,7 +3000,7 @@ async def api_discover_related(bookmark_id: str):
     """Find 3-5 related URLs for a bookmark using web search. No API key needed."""
     db = get_db()
     bookmark = db.execute("""
-        SELECT b.title, b.domain, c.summary
+        SELECT b.url, b.title, b.domain, c.summary
         FROM bookmarks b LEFT JOIN content c ON b.id = c.bookmark_id
         WHERE b.id = ?
     """, (bookmark_id,)).fetchone()
@@ -3008,31 +3008,42 @@ async def api_discover_related(bookmark_id: str):
         db.close()
         return JSONResponse({"error": "Not found"}, status_code=404)
 
-    # Build a search query from title + summary keywords
+    # Build a search query from title + summary keywords.
+    # Strip GitHub's "GitHub - owner/repo:" prefix and other noisy fragments —
+    # DDG ranks better on clean keyword queries than on raw page titles.
+    import re
     title = bookmark["title"] or ""
     summary = bookmark["summary"] or ""
-    # Use title as primary query, trim to key phrase
-    query = title[:80]
-    if not query:
-        query = summary[:80]
+    cleaned = re.sub(r"^GitHub\s*-\s*[^:]+:\s*", "", title)
+    cleaned = re.sub(r"[·•|]\s*GitHub\s*$", "", cleaned)
+    cleaned = re.sub(r"[:\-·•|]+", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    query = cleaned[:100] if cleaned else summary[:100]
 
     if not query:
         db.close()
         return JSONResponse({"results": [], "query": ""})
 
-    # Search using DuckDuckGo (no API key needed)
+    # Search using DuckDuckGo (no API key needed). DDG's anti-bot returns HTTP 202
+    # with a challenge page for non-browser User-Agents, so we use a real UA.
     try:
         resp = httpx.get(
             "https://html.duckduckgo.com/html/",
             params={"q": query},
-            headers={"User-Agent": "Mozilla/5.0 curiosity/0.1"},
+            headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) "
+                              "Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
             timeout=10,
             follow_redirects=True,
         )
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(resp.text, "html.parser")
         raw_results = []
-        for link in soup.select(".result__a")[:8]:
+        for link in soup.select(".result__a")[:15]:
             href = link.get("href", "")
             link_title = link.get_text(strip=True)
             if href and link_title:
@@ -3045,16 +3056,28 @@ async def api_discover_related(bookmark_id: str):
     except Exception:
         raw_results = []
 
-    # Dedup against existing bookmarks
+    # Dedup against existing bookmarks. Don't exclude same-domain results —
+    # aggregator domains like github.com/youtube.com/medium.com often have
+    # the most relevant neighbours on the same host.
+    # Exclude *exact* source URL (and common trivial paths) only.
+    source_url = bookmark["url"] or ""
     existing = set()
     for row in db.execute("SELECT url FROM bookmarks").fetchall():
         existing.add(row["url"].rstrip("/").lower())
 
+    source_normalized = source_url.rstrip("/").lower() if source_url else ""
+
     results = []
     for r in raw_results:
         normalized = r["url"].rstrip("/").lower()
-        if normalized not in existing and bookmark["domain"] not in normalized:
-            results.append(r)
+        if normalized in existing:
+            continue
+        if normalized == source_normalized:
+            continue
+        # Skip trivial same-repo/same-page variants (e.g. README, /tree/main)
+        if source_normalized and normalized.startswith(source_normalized + "/"):
+            continue
+        results.append(r)
         if len(results) >= 5:
             break
 

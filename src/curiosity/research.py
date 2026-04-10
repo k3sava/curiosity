@@ -50,14 +50,27 @@ def web_search_brave(query: str, api_key: str, count: int = 5) -> list[dict]:
 
 
 def web_search_fallback(query: str, count: int = 5) -> list[dict]:
-    """Fallback web search using DuckDuckGo HTML (no API key needed)."""
+    """Fallback web search using DuckDuckGo HTML (no API key needed).
+
+    DDG's anti-bot returns HTTP 202 with a challenge page for non-browser
+    User-Agents, so we send a real browser UA. On 202 we return empty and
+    expect the caller to handle (e.g. retry with delay or use Brave API).
+    """
     try:
         resp = httpx.get(
             "https://html.duckduckgo.com/html/",
             params={"q": query},
-            headers={"User-Agent": "Mozilla/5.0 Curiosity/0.1"},
+            headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) "
+                              "Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
             timeout=10,
         )
+        if resp.status_code != 200:
+            return []
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(resp.text, "html.parser")
         results = []
